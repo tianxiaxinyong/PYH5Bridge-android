@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <paths>
+        <root-path path="" name="camera_photos"></root-path>
+        <external-path path="" name="external"></external-path>
+    </paths>
+</resources>
+

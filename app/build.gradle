@@ -1,0 +1,41 @@
+apply from: rootProject.projectDir.absolutePath + "/config.gradle"
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    defaultConfig {
+        applicationId "com.pycredit.h5bridge"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 4
+        versionName releaseVersion
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    
+    signingConfigs {
+        release {
+            storeFile file('demoKeystore')
+            storePassword 'demoapkkey'
+            keyAlias 'demoKeystoreAlias'
+            keyPassword 'demoapkkey'
+        }
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    compile 'com.android.support:appcompat-v7:' + rootProject.ext.supportLibraryVersion
+    compile project(':h5bridge')
+}
