@@ -67,8 +67,13 @@ dependencies {
 -keep class com.google.android.cameraview.** { *; }
 ```
 
-**接口调用**  
+**如何使用**  
 实例化5SDKHelper  
+
+```
+ h5SDKHelper = new H5SDKHelper(this, mWebView);
+```
+
 1、WebView所在的Activity/Fragment生命周期中调用H5SDKHelper对应的生命周期方法  
 
 ```
@@ -102,6 +107,10 @@ dependencies {
     }
 
 ```
+
+> 注意：有可能会遇到按返回一直在重复加载第一个页面这种情况建议在页面合适的地方加一个直接关闭页面按钮直接finish掉页面，eg:右上角加个关闭menu  
+
+
 3、处理网页面重定向,主要是为了处理点击网页中的电话号码调起拔打电话页面(如果已经处理了tel:这个scheme则无需此步)  
 在WebViewClient的shouldOverrideUrlLoading方法中加上下面代码：  
 
@@ -115,6 +124,7 @@ dependencies {
             }
 
 ```  
+
 4、处理上传文件功能（重要）  
 重写WebChromeClient的onShowFileChooser、openFileChooser方法  
 
@@ -132,6 +142,7 @@ dependencies {
                 return super.onShowFileChooser(webView, filePathCallback, fileChooserParams);
             }
 ```
+
 5、处理地理位置请求  
 重写WebChromeClient的onGeolocationPermissionsShowPrompt  
 
@@ -142,7 +153,20 @@ dependencies {
             }
 ```
 
-6、添加广告（可选）  
+6、处理5.0以上WebView录视频、录音权限请求
+重写WebChromeClient的onPermissionRequest  
+
+```
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                h5SDKHelper.onPermissionRequest(request);
+            }
+```
+
+> 如果你的WebView没有别的特殊处理，上面的3、4、5、6步可以直接使用h5SDKHelper.initDefaultSettings(),或者分别使用DefaultWebViewClient,DefaultWebChromeClient
+
+
+7、添加广告（可选）  
 
 ```
         //如果需要在H5页面插入广告，使用如下方式，传入广告图片地址及回调
@@ -154,15 +178,6 @@ dependencies {
             }
         });
 ```
-7、设置拍照使用的相机（可选）  
-默认使用系统相机拍照，SDK内置了一个自定义拍照实现CustomCaptureImpl，用户也可以自定义相机实现Capture接口  
-
-```
-h5SDKHelper.setCapture(new CustomCaptureImpl());
-```
-
-> 如果你的WebView没有别的特殊处理，上面的3、4、5步可以直接使用h5SDKHelper.initDefaultSettings(),或者分别使用DefaultWebViewClient,DefaultWebChromeClient
-
 
 > 注意：WebView所在页面Activity需要配置成竖屏  
 
@@ -173,3 +188,10 @@ android:screenOrientation="portrait"
 **当前支持android系统版本**
 1. 当前支付android 4.1(API 16)及以上系统版本；
 2. android 4.4.4系统不支持调起微信支付
+
+
+
+[更新日志](change_log.md)  
+
+
+[FAQ](FAQ.md)  

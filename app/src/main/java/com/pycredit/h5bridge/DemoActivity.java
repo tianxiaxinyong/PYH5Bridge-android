@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.webkit.GeolocationPermissions;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -38,6 +39,19 @@ public class DemoActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
+        h5SDKHelper = new H5SDKHelper(this, mWebView);
+//        1、如果你的WebView没有别的特殊处理,只需要调用initDefaultSettings就可以了
+//        h5SDKHelper.initDefaultSettings();
+
+//        2、如果你的WebView暂时没有自定义了WebViewClient与setWebChromeClient，同时你又有一些特处理，可以使用DefaultWebViewClient与DefaultWebChromeClient的子类
+//        mWebView.setWebViewClient(new DefaultWebViewClient(h5SDKHelper) {
+//            //实现你的处理(注意不要覆盖了DefaultWebViewClient中的方法)
+//        });
+//        mWebView.setWebChromeClient(new DefaultWebChromeClient(h5SDKHelper) {
+//            //实现你的处理(注意不要覆盖了DefaultWebChromeClient中的方法)
+//        });
+
+//        3、如果你的WebView已经自定义了WebViewClient，与setWebChromeClient，则在以下相应方法中调用h5SDKHelper的相应方法
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -67,8 +81,13 @@ public class DemoActivity extends AppCompatActivity {
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 h5SDKHelper.onGeolocationPermissionsShowPrompt(origin, callback);
             }
+
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                h5SDKHelper.onPermissionRequest(request);
+            }
         });
-        h5SDKHelper = new H5SDKHelper(this, mWebView);
+
         //如果需要在H5页面插入广告，使用如下方式，传入广告图片地址及回调
         //请使用 https:// 协议的网址，否则可能导致协议错误无法加载
         h5SDKHelper.setBanner("https://apk-txxy.oss-cn-shenzhen.aliyuncs.com/test_ad.png", new BannerCallback() {

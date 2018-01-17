@@ -1,4 +1,14 @@
-#### v1.1.0 
+#### v1.1.2  
+**更新时间**   
+2018-01-17  
+
+**Change Log**  
+1、配合业务需要修改  
+
+**升级指南**  
+重写WebChromeClient的openFileChooser、onShowFileChooser、onGeolocationPermissionsShowPrompt三个方法，分别调用h5SDKHelper的相应方法，参考DemoActivity  
+
+#### v1.1.0  
 **更新时间**   
 2017-12-14  
 

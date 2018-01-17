@@ -119,7 +119,12 @@ public class FileChooseActivity extends Activity {
 
     private void startUploadFile(Intent target) {
         if (target != null) {
-            startActivityForResult(target, REQUEST_CODE_FILE_UPLOAD);
+            try {
+                startActivityForResult(target, REQUEST_CODE_FILE_UPLOAD);
+            } catch (Exception e) {
+                e.printStackTrace();
+                uploadFail();
+            }
         } else {
             uploadFail();
         }
@@ -129,8 +134,8 @@ public class FileChooseActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_CODE_FILE_UPLOAD) {
-            if (resultCode == RESULT_OK && data != null) {
-                Uri uri = data.getData();
+            if (resultCode == RESULT_OK) {
+                Uri uri = data != null ? data.getData() : null;
                 if (uri != null) {
                     uploadSuccess(uri);
                 } else {
@@ -141,11 +146,7 @@ public class FileChooseActivity extends Activity {
                     }
                 }
             } else {
-                if (imageUri != null) {
-                    uploadSuccess(imageUri);
-                } else {
-                    uploadFail();
-                }
+                uploadFail();
             }
         }
     }
@@ -153,6 +154,7 @@ public class FileChooseActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (callback != null) {
+            callback.onFail();
             callback = null;
         }
         super.onDestroy();
@@ -161,6 +163,7 @@ public class FileChooseActivity extends Activity {
     private void uploadSuccess(Uri uri) {
         if (callback != null) {
             callback.onSuccess(uri);
+            callback = null;
         }
         finish();
         imageUri = null;
@@ -170,6 +173,7 @@ public class FileChooseActivity extends Activity {
     private void uploadFail() {
         if (callback != null) {
             callback.onFail();
+            callback = null;
         }
         imageUri = null;
         finish();
@@ -182,22 +186,19 @@ public class FileChooseActivity extends Activity {
      * @return
      */
     private Intent createCaptureDisableIntent(String acceptType) {
-        String type = "*/*";
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
         if (acceptType != null) {
             String[] split = acceptType.split(",");
             if (split != null && split.length > 0) {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < split.length; i++) {
-                    sb.append(split[i]);
-                    if (i != split.length - 1) {
-                        sb.append("|");
-                    }
+                if (split.length == 1) {
+                    intent.setType(split[0]);
+                } else {
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, split);
                 }
-                type = sb.toString();
             }
         }
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType(type);
         PackageManager packageManager = getPackageManager();
         if (intent.resolveActivity(packageManager) != null) {
             return intent;

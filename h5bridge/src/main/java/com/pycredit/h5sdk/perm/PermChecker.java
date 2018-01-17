@@ -22,7 +22,7 @@ import java.util.List;
  * Created by huangx on 2017/10/19.
  */
 
-public class PermChecker implements OnRequestPermissionsResultDelegate, OnActivityResultDelegate {
+public class PermChecker implements ActivityDelegate {
 
 
     public interface RequestPermCallback {

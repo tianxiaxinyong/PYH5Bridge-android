@@ -13,6 +13,7 @@ import android.view.ViewParent;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.GeolocationPermissions;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -26,9 +27,8 @@ import com.pycredit.h5sdk.impl.OnBackPressedDelegate;
 import com.pycredit.h5sdk.impl.PYCreditJsBridge;
 import com.pycredit.h5sdk.impl.PYCreditJsCallAppProcessor;
 import com.pycredit.h5sdk.js.BaseBridge;
-import com.pycredit.h5sdk.js.OnGeolocationPermissionsShowPromptDelegate;
-import com.pycredit.h5sdk.js.OnShowFileChooserDelegate;
-import com.pycredit.h5sdk.js.ShouldOverrideUrlLoadingDelegate;
+import com.pycredit.h5sdk.js.WebChromeClientDelegate;
+import com.pycredit.h5sdk.js.WebViewClientDelegate;
 
 import java.lang.ref.WeakReference;
 
@@ -36,7 +36,7 @@ import java.lang.ref.WeakReference;
  * Created by huangx on 2017/10/13.
  */
 
-public class H5SDKHelper implements OnBackPressedDelegate, ShouldOverrideUrlLoadingDelegate, OnShowFileChooserDelegate, OnGeolocationPermissionsShowPromptDelegate {
+public class H5SDKHelper implements OnBackPressedDelegate, WebViewClientDelegate, WebChromeClientDelegate {
 
     private PYCreditJsCallAppProcessor processor;
 
@@ -186,6 +186,11 @@ public class H5SDKHelper implements OnBackPressedDelegate, ShouldOverrideUrlLoad
     @Override
     public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
         h5JsHelper.onGeolocationPermissionsShowPrompt(origin, callback);
+    }
+
+    @Override
+    public void onPermissionRequest(PermissionRequest request) {
+        h5JsHelper.onPermissionRequest(request);
     }
 
     public static String getSdkVersion() {

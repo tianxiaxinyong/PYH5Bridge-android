@@ -2,6 +2,7 @@ package com.pycredit.h5sdk.impl;
 
 import android.net.Uri;
 import android.webkit.GeolocationPermissions;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -37,5 +38,10 @@ public class DefaultWebChromeClient extends WebChromeClient {
     @Override
     public void onGeolocationPermissionsShowPrompt(final String origin, final GeolocationPermissions.Callback callback) {
         h5SDKHelper.onGeolocationPermissionsShowPrompt(origin, callback);
+    }
+
+    @Override
+    public void onPermissionRequest(PermissionRequest request) {
+        h5SDKHelper.onPermissionRequest(request);
     }
 }
