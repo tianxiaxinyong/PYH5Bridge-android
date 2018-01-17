@@ -1,3 +1,5 @@
+[ ![Download](https://api.bintray.com/packages/tianxiaxinyong/maven/PYH5Bridge/images/download.svg?version=1.1.0) ](https://bintray.com/tianxiaxinyong/maven/PYH5Bridge/1.1.0/link)
+
 **H5Bridge android集成流程**
 
 **集成代码库工程**  
