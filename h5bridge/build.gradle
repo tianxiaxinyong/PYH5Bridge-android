@@ -24,6 +24,7 @@ android {
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
+    provided fileTree(includes: ['*.jar'], dir: 'providedLibs')
     compile 'com.android.support:support-v4:' + rootProject.ext.supportLibraryVersion
     compile 'com.android.support:support-annotations:' + rootProject.ext.supportLibraryVersion
     compile 'com.qiniu:qiniu-android-sdk:7.3.10'

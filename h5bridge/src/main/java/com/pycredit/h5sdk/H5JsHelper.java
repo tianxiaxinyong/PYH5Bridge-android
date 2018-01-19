@@ -17,6 +17,9 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 
+import com.alipay.sdk.app.H5PayCallback;
+import com.alipay.sdk.app.PayTask;
+import com.alipay.sdk.util.H5PayResultModel;
 import com.pycredit.h5sdk.js.WebChromeClientDelegate;
 import com.pycredit.h5sdk.js.WebViewClientDelegate;
 import com.pycredit.h5sdk.perm.PermChecker;
@@ -24,6 +27,7 @@ import com.pycredit.h5sdk.ui.FileChooseActivity;
 import com.pycredit.h5sdk.ui.PermRequestActivity;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,9 +37,24 @@ import java.util.List;
 
 public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegate {
 
+    public static final boolean hasAlipayLib;
+
     protected WeakReference<Context> contextRef;
     protected WeakReference<Activity> activityRef;
     protected WeakReference<Fragment> fragmentRef;
+
+    private Object mPayTask;
+
+    static {
+        boolean tag = true;
+        try {
+            Class.forName("com.alipay.sdk.app.PayTask");
+        } catch (ClassNotFoundException e) {
+            tag = false;
+        }
+        hasAlipayLib = tag;
+    }
+
 
     public H5JsHelper(Activity activity) {
         activityRef = new WeakReference<>(activity);
@@ -50,7 +69,10 @@ public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegat
     @SuppressLint("MissingPermission")
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, String url) {
-        if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
+        if ((url.startsWith("http://") || url.startsWith("https://")) && isAlipay(view, url)) {
+            return true;
+        }
+        if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:") || url.startsWith("weixin://") || url.startsWith("alipays://") || url.startsWith("alipay")) {
             if (contextRef != null && contextRef.get() != null) {
                 final Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(Uri.parse(url));
@@ -159,6 +181,10 @@ public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegat
                     if (!permList.contains(Manifest.permission.MODIFY_AUDIO_SETTINGS)) {
                         permList.add(Manifest.permission.MODIFY_AUDIO_SETTINGS);
                     }
+                } else if (resource.equals(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID)) {
+                    if (!permList.contains(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                        permList.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+                    }
                 }
             }
         }
@@ -186,5 +212,38 @@ public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegat
                 request.grant(request.getResources());
             }
         }
+    }
+
+
+    public boolean isAlipay(final WebView webView, String url) {
+        if (hasAlipayLib && contextRef != null && contextRef.get() != null && contextRef.get() instanceof Activity) {
+            if (mPayTask == null) {
+                try {
+                    Class clazz = Class.forName("com.alipay.sdk.app.PayTask");
+                    Constructor<?> mConstructor = clazz.getConstructor(Activity.class);
+                    mPayTask = mConstructor.newInstance((Activity) contextRef.get());
+                    PayTask task = (PayTask) mPayTask;
+                    boolean isIntercepted = task.payInterceptorWithUrl(url, true, new H5PayCallback() {
+                        @Override
+                        public void onPayResult(H5PayResultModel h5PayResultModel) {
+                            final String returnUrl = h5PayResultModel.getReturnUrl();
+                            if (!TextUtils.isEmpty(returnUrl)) {
+                                if (contextRef != null && contextRef.get() != null && contextRef.get() instanceof Activity) {
+                                    ((Activity) contextRef.get()).runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            webView.loadUrl(returnUrl);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                    return isIntercepted;
+                } catch (Throwable e) {
+                }
+            }
+        }
+        return false;
     }
 }

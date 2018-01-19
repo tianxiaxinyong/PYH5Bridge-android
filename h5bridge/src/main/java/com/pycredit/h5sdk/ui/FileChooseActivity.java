@@ -74,15 +74,30 @@ public class FileChooseActivity extends Activity {
             target = createCaptureDisableIntent(acceptType);
         }
         if (!capture) {
-            startUploadFile(target);
+            if (PermChecker.hasPermissionAppOps(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE})) {
+                startUploadFile(target);
+            } else {
+                final Intent finalTarget = target;
+                PermRequestActivity.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, new PermChecker.RequestPermCallback() {
+                    @Override
+                    public void onRequestSuccess() {
+                        startUploadFile(finalTarget);
+                    }
+
+                    @Override
+                    public void onRequestFail() {
+                        uploadFail();
+                    }
+                });
+            }
         } else {
             if (acceptType != null) {
                 if (acceptType.contains("image") || acceptType.contains("video")) {
-                    if (PermChecker.hasPermissionAppOps(this, new String[]{Manifest.permission.CAMERA})) {
+                    if (PermChecker.hasPermissionAppOps(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE})) {
                         startUploadFile(target);
                     } else {
                         final Intent finalTarget = target;
-                        PermRequestActivity.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, new PermChecker.RequestPermCallback() {
+                        PermRequestActivity.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}, new PermChecker.RequestPermCallback() {
                             @Override
                             public void onRequestSuccess() {
                                 startUploadFile(finalTarget);
@@ -95,11 +110,11 @@ public class FileChooseActivity extends Activity {
                         });
                     }
                 } else if (acceptType.contains("audio")) {
-                    if (PermChecker.hasPermissionAppOps(this, new String[]{Manifest.permission.RECORD_AUDIO})) {
+                    if (PermChecker.hasPermissionAppOps(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE})) {
                         startUploadFile(target);
                     } else {
                         final Intent finalTarget = target;
-                        PermRequestActivity.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, new PermChecker.RequestPermCallback() {
+                        PermRequestActivity.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE}, new PermChecker.RequestPermCallback() {
                             @Override
                             public void onRequestSuccess() {
                                 startUploadFile(finalTarget);

@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.Nullable;
@@ -16,11 +15,12 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.pycredit.h5sdk.H5JsHelper;
+
 import java.util.HashMap;
 import java.util.Map;
 
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_PAY_APP_NOT_INSTALL;
-import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_PAY_USER_CANCEL;
 
 /**
  * 支付中转页面
@@ -29,8 +29,7 @@ import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_PAY_USER_CANCEL;
 
 public class WebActivity extends Activity {
 
-    public static final int REQUEST_CODE_WEIXIN = 2001;
-    public static final int REQUEST_CODE_ALIPAY = 2002;
+    public static final int REQUEST_CODE_WEIXIN_ALIPAY = 2001;
 
     private WebView webView;
 
@@ -39,6 +38,8 @@ public class WebActivity extends Activity {
     private Handler handler;
 
     private static Callback callback;
+
+    private H5JsHelper h5JsHelper;
 
     /**
      * 支付回调
@@ -73,6 +74,7 @@ public class WebActivity extends Activity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        h5JsHelper = new H5JsHelper(this);
         handler = new Handler();
         webView = new WebView(this.getApplicationContext());
         setContentView(webView, new ViewGroup.LayoutParams(0, 0));
@@ -98,39 +100,21 @@ public class WebActivity extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if ((url.startsWith("http://") || url.startsWith("https://")) && h5JsHelper.isAlipay(view, url)) {
+                    return true;
+                }
                 PackageManager packageManager = getPackageManager();
-                if (url.startsWith("weixin://")) {//微信支付
+                if (url.startsWith("weixin:") || url.startsWith("alipay") || url.startsWith("alipays:")) {//微信支付、支付宝支付
                     Intent intent = new Intent();
                     intent.setAction(Intent.ACTION_VIEW);
                     intent.setData(Uri.parse(url));
                     if (intent.resolveActivity(packageManager) != null) {
-                        startActivityForResult(intent, REQUEST_CODE_WEIXIN);
+                        startActivityForResult(intent, REQUEST_CODE_WEIXIN_ALIPAY);
                     } else {
                         if (callback != null) {
                             callback.onFail(ERROR_PAY_APP_NOT_INSTALL.getCode(), ERROR_PAY_APP_NOT_INSTALL.getMsg());
                         }
                         finish();
-                    }
-                    noError = true;
-                    return true;
-                } else if (parseScheme(url)) {//支付宝支付(暂未支持)
-                    try {
-                        Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
-                        if (intent != null) {
-                            intent.addCategory("android.intent.category.BROWSABLE");
-                            intent.setComponent(null);
-                            if (intent.resolveActivity(packageManager) != null) {
-                                startActivityForResult(intent, REQUEST_CODE_ALIPAY);
-                            } else {
-                                if (callback != null) {
-                                    callback.onFail(ERROR_PAY_APP_NOT_INSTALL.getCode(), ERROR_PAY_APP_NOT_INSTALL.getMsg());
-                                }
-                                finish();
-                            }
-                            return true;
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
                     }
                     noError = true;
                     return true;
@@ -170,23 +154,9 @@ public class WebActivity extends Activity {
         super.onDestroy();
     }
 
-    public boolean parseScheme(String url) {
-        if (url.contains("platformapi/startapp")) {
-            return true;
-        } else if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M && url.contains("platformapi") && url.contains("startapp")) {
-            return true;
-        }
-        return false;
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_CODE_WEIXIN) {
-            if (callback != null) {
-                callback.onSuccess();
-            }
-            finish();
-        } else if (requestCode == REQUEST_CODE_ALIPAY) {
+        if (requestCode == REQUEST_CODE_WEIXIN_ALIPAY) {
             if (callback != null) {
                 callback.onSuccess();
             }
