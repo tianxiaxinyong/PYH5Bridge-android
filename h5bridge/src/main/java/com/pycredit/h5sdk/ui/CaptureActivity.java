@@ -14,6 +14,9 @@ import android.support.v4.content.FileProvider;
 import com.pycredit.h5sdk.capture.CaptureCallback;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_CAMERA_USER_CANCEL;
 
@@ -27,22 +30,27 @@ import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_CAMERA_USER_CANCEL;
 public class CaptureActivity extends Activity {
 
     public static final String EXTRA_SAVE_PATH = "extra_save_path";
+    public static final String EXTRA_CALLBACK_KEY = "extra_callback_key";
 
     private final int CAPTURE_REQUEST_CODE = 1003;
 
     private String savePath;
 
-    private static CaptureCallback callback;
+    private static Map<Long, WeakReference<CaptureCallback>> callbackMap = new HashMap<>();
 
-    public static void setCallback(CaptureCallback callback) {
-        CaptureActivity.callback = callback;
+    private long currentCallbackKey;
+
+    public static void setCallback(long callbackKey, CaptureCallback callback) {
+        callbackMap.put(callbackKey, new WeakReference<>(callback));
     }
 
     public static void startCapture(Context context, String savePath, CaptureCallback callback) {
-        CaptureActivity.setCallback(callback);
+        long callbackKey = System.currentTimeMillis();
+        setCallback(callbackKey, callback);
         Intent intent = new Intent(context, CaptureActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra(EXTRA_SAVE_PATH, savePath);
+        intent.putExtra(EXTRA_CALLBACK_KEY, callbackKey);
         context.startActivity(intent);
     }
 
@@ -50,34 +58,39 @@ public class CaptureActivity extends Activity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         savePath = getIntent().getStringExtra(EXTRA_SAVE_PATH);
+        currentCallbackKey = getIntent().getLongExtra(EXTRA_CALLBACK_KEY, 0);
         Intent captureIntent = getCaptureIntent(savePath);
         PackageManager packageManager = getPackageManager();
         if (captureIntent != null && captureIntent.resolveActivity(packageManager) != null) {
             try {
                 startActivityForResult(captureIntent, CAPTURE_REQUEST_CODE);
             } catch (Exception e) {
-                if (callback != null) {
-                    callback.onFail("-1", "无法调起系统相机");
+                if (getCurrentCallback() != null) {
+                    getCurrentCallback().onFail("-1", "无法调起系统相机");
                 }
                 finish();
             }
         } else {
-            if (callback != null) {
-                callback.onFail("-1", "无法调起系统相机");
+            if (getCurrentCallback() != null) {
+                getCurrentCallback().onFail("-1", "无法调起系统相机");
             }
             finish();
         }
+    }
+
+    private CaptureCallback getCurrentCallback() {
+        return callbackMap.get(currentCallbackKey) != null ? callbackMap.get(currentCallbackKey).get() : null;
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == CAPTURE_REQUEST_CODE) {
-            if (callback != null) {
+            if (getCurrentCallback() != null) {
                 if (resultCode == Activity.RESULT_OK) {
-                    callback.onSuccess(savePath);
+                    getCurrentCallback().onSuccess(savePath);
                 } else {
-                    callback.onFail(ERROR_CAMERA_USER_CANCEL.getCode(), ERROR_CAMERA_USER_CANCEL.getMsg());
+                    getCurrentCallback().onFail(ERROR_CAMERA_USER_CANCEL.getCode(), ERROR_CAMERA_USER_CANCEL.getMsg());
                 }
             }
             finish();
@@ -86,9 +99,7 @@ public class CaptureActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (callback != null) {
-            callback = null;
-        }
+        callbackMap.remove(currentCallbackKey);
         super.onDestroy();
     }
 

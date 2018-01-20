@@ -23,6 +23,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author huangx
@@ -33,6 +36,7 @@ public class CameraActivity extends Activity {
 
     public static final String EXTRA_CAPTURE_CONFIG = "extra_capture_config";
     public static final String EXTRA_SAVE_PATH = "extra_save_path";
+    public static final String EXTRA_CALLBACK_KEY = "extra_callback_key";
 
     private CameraView cameraView;
     private ImageView ivBack;
@@ -61,18 +65,22 @@ public class CameraActivity extends Activity {
 
     private int mCurrentFlash;
 
-    private static CaptureCallback callback;
+    private static Map<Long, WeakReference<CaptureCallback>> callbackMap = new HashMap<>();
 
-    public static void setCallback(CaptureCallback callback) {
-        CameraActivity.callback = callback;
+    private long currentCallbackKey;
+
+    public static void setCallback(long callbackKey, CaptureCallback callback) {
+        callbackMap.put(callbackKey, new WeakReference<>(callback));
     }
 
     public static void startCapture(Context context, CaptureConfig captureConfig, String savePath, CaptureCallback callback) {
-        CameraActivity.setCallback(callback);
+        long callbackKey = System.currentTimeMillis();
+        setCallback(callbackKey, callback);
         Intent intent = new Intent(context, CameraActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra(EXTRA_CAPTURE_CONFIG, captureConfig);
         intent.putExtra(EXTRA_SAVE_PATH, savePath);
+        intent.putExtra(EXTRA_CALLBACK_KEY, callbackKey);
         context.startActivity(intent);
     }
 
@@ -83,9 +91,11 @@ public class CameraActivity extends Activity {
         if (savedInstanceState != null) {
             captureConfig = (CaptureConfig) savedInstanceState.getSerializable(EXTRA_CAPTURE_CONFIG);
             savePath = savedInstanceState.getString(EXTRA_SAVE_PATH);
+            currentCallbackKey = savedInstanceState.getLong(EXTRA_CALLBACK_KEY);
         } else {
             captureConfig = (CaptureConfig) getIntent().getSerializableExtra(EXTRA_CAPTURE_CONFIG);
             savePath = getIntent().getStringExtra(EXTRA_SAVE_PATH);
+            currentCallbackKey = getIntent().getLongExtra(EXTRA_CALLBACK_KEY, 0);
         }
         if (captureConfig == null) {
             captureConfig = new CaptureConfig(true, false, 0);
@@ -98,6 +108,10 @@ public class CameraActivity extends Activity {
         initViews();
     }
 
+    private CaptureCallback getCurrentCallback() {
+        return callbackMap.get(currentCallbackKey) != null ? callbackMap.get(currentCallbackKey).get() : null;
+    }
+
     private void initViews() {
         cameraView = (CameraView) findViewById(R.id.cameraView);
         ivBack = (ImageView) findViewById(R.id.iv_back);
@@ -107,34 +121,45 @@ public class CameraActivity extends Activity {
         ivCover = (ImageView) findViewById(R.id.iv_cover);
 
         cameraView.addCallback(new CameraView.Callback() {
+            private boolean takingPic;
+
             @Override
             public void onPictureTaken(CameraView cameraView, final byte[] data) {
-                getBackgroundHandler().post(new Runnable() {
-                    @Override
-                    public void run() {
-                        File file = new File(savePath);
-                        OutputStream os = null;
-                        try {
-                            os = new FileOutputStream(file);
-                            os.write(data);
-                            os.close();
-                            if (callback != null) {
-                                callback.onSuccess(savePath);
-                            }
-                        } catch (IOException e) {
-                            callback.onFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getCode(), JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getMsg());
-                        } finally {
-                            if (os != null) {
-                                try {
-                                    os.close();
-                                } catch (IOException e) {
-                                    // Ignore
+                if (!takingPic) {
+                    takingPic = true;
+                    getBackgroundHandler().post(new Runnable() {
+                        @Override
+                        public void run() {
+                            File file = new File(savePath);
+                            OutputStream os = null;
+                            try {
+                                os = new FileOutputStream(file);
+                                os.write(data);
+                                os.close();
+                                if (getCurrentCallback() != null) {
+                                    getCurrentCallback().onSuccess(savePath);
+                                    callbackMap.remove(currentCallbackKey);
                                 }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                                if (getCurrentCallback() != null) {
+                                    getCurrentCallback().onFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getCode(), JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getMsg());
+                                    callbackMap.remove(currentCallbackKey);
+                                }
+                            } finally {
+                                if (os != null) {
+                                    try {
+                                        os.close();
+                                    } catch (IOException e) {
+                                        // Ignore
+                                    }
+                                }
+                                takingPic = false;
+                                finish();
                             }
-                            finish();
                         }
-                    }
-                });
+                    });
+                }
             }
         });
         ivBack.setOnClickListener(new View.OnClickListener() {
@@ -201,6 +226,7 @@ public class CameraActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         outState.putSerializable(EXTRA_CAPTURE_CONFIG, captureConfig);
         outState.putString(EXTRA_SAVE_PATH, savePath);
+        outState.putLong(EXTRA_CALLBACK_KEY, currentCallbackKey);
         super.onSaveInstanceState(outState);
     }
 
@@ -227,9 +253,7 @@ public class CameraActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (callback != null) {
-            callback = null;
-        }
+        callbackMap.remove(currentCallbackKey);
         super.onDestroy();
         if (mBackgroundHandler != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {

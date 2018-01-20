@@ -15,6 +15,9 @@ import android.support.v4.content.FileProvider;
 import com.pycredit.h5sdk.perm.PermChecker;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author huangx
@@ -25,6 +28,7 @@ public class FileChooseActivity extends Activity {
 
     public static final String EXTRA_ACCEPT_TYPE = "extra_accept_type";
     public static final String EXTRA_CAPTURE = "extra_capture";
+    public static final String EXTRA_CALLBACK_KEY = "extra_callback_key";
 
     private static final int REQUEST_CODE_FILE_UPLOAD = 100;
 
@@ -42,23 +46,27 @@ public class FileChooseActivity extends Activity {
         void onFail();
     }
 
-    private static FileChooseCallback callback;
+    private static Map<Long, WeakReference<FileChooseCallback>> callbackMap = new HashMap<>();
+
+    private long currentCallbackKey;
 
     private String acceptType;
     private boolean capture;
 
     private Uri imageUri;
 
-    private static void setChooseCallback(FileChooseCallback chooseCallback) {
-        FileChooseActivity.callback = chooseCallback;
+    private static void setChooseCallback(long callbackKey, FileChooseCallback chooseCallback) {
+        callbackMap.put(callbackKey, new WeakReference<>(chooseCallback));
     }
 
     public static void startFileChoose(Context context, String acceptType, boolean capture, FileChooseCallback chooseCallback) {
-        setChooseCallback(chooseCallback);
+        long callbackKey = System.currentTimeMillis();
+        setChooseCallback(callbackKey, chooseCallback);
         Intent intent = new Intent(context, FileChooseActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra(EXTRA_ACCEPT_TYPE, acceptType);
         intent.putExtra(EXTRA_CAPTURE, capture);
+        intent.putExtra(EXTRA_CALLBACK_KEY, callbackKey);
         context.startActivity(intent);
     }
 
@@ -67,6 +75,7 @@ public class FileChooseActivity extends Activity {
         super.onCreate(savedInstanceState);
         acceptType = getIntent().getStringExtra(EXTRA_ACCEPT_TYPE);
         capture = getIntent().getBooleanExtra(EXTRA_CAPTURE, false);
+        currentCallbackKey = getIntent().getLongExtra(EXTRA_CALLBACK_KEY, 0);
         Intent target = null;
         if (capture) {
             target = createCaptureEnableIntent(acceptType);
@@ -132,6 +141,10 @@ public class FileChooseActivity extends Activity {
         }
     }
 
+    private FileChooseCallback getCurrentCallback() {
+        return callbackMap.get(currentCallbackKey) != null ? callbackMap.get(currentCallbackKey).get() : null;
+    }
+
     private void startUploadFile(Intent target) {
         if (target != null) {
             try {
@@ -168,17 +181,17 @@ public class FileChooseActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (callback != null) {
-            callback.onFail();
-            callback = null;
+        if (getCurrentCallback() != null) {
+            getCurrentCallback().onFail();
+            callbackMap.remove(currentCallbackKey);
         }
         super.onDestroy();
     }
 
     private void uploadSuccess(Uri uri) {
-        if (callback != null) {
-            callback.onSuccess(uri);
-            callback = null;
+        if (getCurrentCallback() != null) {
+            getCurrentCallback().onSuccess(uri);
+            callbackMap.remove(currentCallbackKey);
         }
         finish();
         imageUri = null;
@@ -186,9 +199,9 @@ public class FileChooseActivity extends Activity {
 
 
     private void uploadFail() {
-        if (callback != null) {
-            callback.onFail();
-            callback = null;
+        if (getCurrentCallback() != null) {
+            getCurrentCallback().onFail();
+            callbackMap.remove(currentCallbackKey);
         }
         imageUri = null;
         finish();
