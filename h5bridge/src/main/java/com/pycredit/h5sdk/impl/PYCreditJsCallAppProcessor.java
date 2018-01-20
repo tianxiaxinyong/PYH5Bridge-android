@@ -31,7 +31,9 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_IMAGE_HANDLE;
@@ -39,6 +41,7 @@ import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_NO_BANNER;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_NO_BANNER_URL;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_NO_CAMERA_PERM;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_PAY_APP_NOT_INSTALL;
+import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_REQUEST_PERM_FAIL;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_UPLOAD_FAIL;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.SUCCESS;
 
@@ -415,6 +418,93 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
             successData.put("version", H5SDKHelper.getSdkVersion());
             PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(successData);
             callback.jsCallAppSuccess(js2AppInfo, app2JsInfo, parser);
+        }
+    }
+
+    /**
+     * 申请权根（拍照、拍视频）
+     *
+     * @param js2AppInfo
+     * @param parser
+     * @param callback
+     */
+    @Override
+    public void authorization(final PYCreditJs2AppInfo js2AppInfo, final PYCreditJsParser parser, final JsCallAppCallback callback) {
+        JSONObject dataObj = js2AppInfo.getDataObj();
+        if (dataObj != null) {
+            List<String> permList = new ArrayList<>();
+            boolean image = dataObj.optBoolean("image");
+            boolean video = dataObj.optBoolean("video");
+            if (image) {
+                if (!permList.contains(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                    permList.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+                }
+                if (!permList.contains(Manifest.permission.CAMERA)) {
+                    permList.add(Manifest.permission.CAMERA);
+                }
+            }
+            if (video) {
+                if (!permList.contains(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                    permList.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+                }
+                if (!permList.contains(Manifest.permission.CAMERA)) {
+                    permList.add(Manifest.permission.CAMERA);
+                }
+            }
+            if (!permList.isEmpty()) {
+                if (contextRef != null && contextRef.get() != null) {
+                    String[] perms = permList.toArray(new String[permList.size()]);
+                    if (PermChecker.hasPermissionAppOps(contextRef.get(), perms)) {
+                        if (callback != null) {
+                            Map<String, Object> successData = new HashMap<>();
+                            successData.put("code", SUCCESS.getCode());
+                            successData.put("message", SUCCESS.getMsg());
+                            PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(successData);
+                            callback.jsCallAppSuccess(js2AppInfo, app2JsInfo, parser);
+                        }
+                    } else {
+                        PermRequestActivity.requestPermissions(contextRef.get(), perms, new PermChecker.RequestPermCallback() {
+                            @Override
+                            public void onRequestSuccess() {
+                                if (callback != null) {
+                                    Map<String, Object> successData = new HashMap<>();
+                                    successData.put("code", SUCCESS.getCode());
+                                    successData.put("message", SUCCESS.getMsg());
+                                    PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(successData);
+                                    callback.jsCallAppSuccess(js2AppInfo, app2JsInfo, parser);
+                                }
+                            }
+
+                            @Override
+                            public void onRequestFail() {
+                                if (callback != null) {
+                                    Map<String, Object> errorData = new HashMap<>();
+                                    errorData.put("code", ERROR_REQUEST_PERM_FAIL.getCode());
+                                    errorData.put("message", ERROR_REQUEST_PERM_FAIL.getMsg());
+                                    PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
+                                    callback.jsCallAppFail(js2AppInfo, app2JsInfo, parser);
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    if (callback != null) {
+                        Map<String, Object> errorData = new HashMap<>();
+                        errorData.put("code", ERROR_REQUEST_PERM_FAIL.getCode());
+                        errorData.put("message", ERROR_REQUEST_PERM_FAIL.getMsg());
+                        PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
+                        callback.jsCallAppFail(js2AppInfo, app2JsInfo, parser);
+                    }
+                }
+            } else {
+                if (callback != null) {
+                    Map<String, Object> successData = new HashMap<>();
+                    successData.put("code", SUCCESS.getCode());
+                    successData.put("message", SUCCESS.getMsg());
+                    PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(successData);
+                    callback.jsCallAppSuccess(js2AppInfo, app2JsInfo, parser);
+                }
+            }
         }
     }
 

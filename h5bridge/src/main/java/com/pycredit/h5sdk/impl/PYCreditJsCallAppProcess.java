@@ -71,4 +71,13 @@ public interface PYCreditJsCallAppProcess extends JsCallAppProcess {
      * @param callback
      */
     void getAppInfo(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback);
+
+    /**
+     * 申请权根（拍照、拍视频）
+     *
+     * @param js2AppInfo
+     * @param parser
+     * @param callback
+     */
+    void authorization(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback);
 }

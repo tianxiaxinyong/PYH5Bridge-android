@@ -14,7 +14,9 @@ public enum JsCallAppErrorCode {
     ERROR_PAY_USER_CANCEL("error_3002", "用户取消打开支付 App"),
     ERROR_PREVIEW_FAIL("error_4001", "预览失败"),
     ERROR_NO_BANNER_URL("error_5001", "没有广告 banner"),
-    ERROR_NO_BANNER("error_6001", "没有广告");
+    ERROR_NO_BANNER("error_6001", "没有广告"),
+    ERROR_GET_SDK_VERSION_FAIL("error_7001", "获取SDK信息失败"),
+    ERROR_REQUEST_PERM_FAIL("error_8001", "授权失败");
 
     private String code;
     private String msg;

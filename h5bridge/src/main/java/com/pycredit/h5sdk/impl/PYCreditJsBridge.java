@@ -139,4 +139,21 @@ public class PYCreditJsBridge<T extends PYCreditJsCallAppProcess> extends BaseBr
             }
         });
     }
+
+    /**
+     * 申请权根（拍照、拍视频）
+     *
+     * @param params
+     */
+    @JavascriptInterface
+    public void authorization(String params) {
+        runOnUiThread(new JsCallAppRunner<PYCreditJsCallAppProcess>(getJsCallAppProcess(), params, this) {
+            @Override
+            public void run() {
+                if (process != null) {
+                    process.authorization(parser.decode(params), parser, callback);
+                }
+            }
+        });
+    }
 }
