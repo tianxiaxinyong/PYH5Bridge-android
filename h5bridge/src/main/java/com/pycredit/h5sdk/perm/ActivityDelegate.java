@@ -9,6 +9,9 @@ import android.support.annotation.NonNull;
  */
 
 public interface ActivityDelegate {
+
+    void onResume();
+
     void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults);
 
     void onActivityResult(int requestCode, int resultCode, Intent data);

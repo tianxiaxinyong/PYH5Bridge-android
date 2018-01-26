@@ -124,7 +124,7 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
         captureParser = parser;
         captureCallback = callback;
         String[] perms = new String[]{Manifest.permission.CAMERA};
-        if (PermChecker.hasPermissionAppOps(contextRef.get(), perms)) {
+        if (PermChecker.hasPermissions(contextRef.get(), perms)) {
             if (!startCapturePic()) {
                 if (captureCallback != null) {
                     Map<String, Object> errorData = new HashMap<>();
@@ -454,7 +454,7 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
             if (!permList.isEmpty()) {
                 if (contextRef != null && contextRef.get() != null) {
                     String[] perms = permList.toArray(new String[permList.size()]);
-                    if (PermChecker.hasPermissionAppOps(contextRef.get(), perms)) {
+                    if (PermChecker.hasPermissions(contextRef.get(), perms)) {
                         if (callback != null) {
                             Map<String, Object> successData = new HashMap<>();
                             successData.put("code", SUCCESS.getCode());

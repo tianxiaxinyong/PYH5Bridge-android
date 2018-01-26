@@ -15,7 +15,6 @@ import android.support.v4.content.FileProvider;
 import com.pycredit.h5sdk.perm.PermChecker;
 
 import java.io.File;
-import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -46,7 +45,7 @@ public class FileChooseActivity extends Activity {
         void onFail();
     }
 
-    private static Map<Long, WeakReference<FileChooseCallback>> callbackMap = new HashMap<>();
+    private static Map<Long, FileChooseCallback> callbackMap = new HashMap<>();
 
     private long currentCallbackKey;
 
@@ -56,7 +55,7 @@ public class FileChooseActivity extends Activity {
     private Uri imageUri;
 
     private static void setChooseCallback(long callbackKey, FileChooseCallback chooseCallback) {
-        callbackMap.put(callbackKey, new WeakReference<>(chooseCallback));
+        FileChooseActivity.callbackMap.put(callbackKey, chooseCallback);
     }
 
     public static void startFileChoose(Context context, String acceptType, boolean capture, FileChooseCallback chooseCallback) {
@@ -83,7 +82,7 @@ public class FileChooseActivity extends Activity {
             target = createCaptureDisableIntent(acceptType);
         }
         if (!capture) {
-            if (PermChecker.hasPermissionAppOps(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE})) {
+            if (PermChecker.hasPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE})) {
                 startUploadFile(target);
             } else {
                 final Intent finalTarget = target;
@@ -102,7 +101,7 @@ public class FileChooseActivity extends Activity {
         } else {
             if (acceptType != null) {
                 if (acceptType.contains("image") || acceptType.contains("video")) {
-                    if (PermChecker.hasPermissionAppOps(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE})) {
+                    if (PermChecker.hasPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE})) {
                         startUploadFile(target);
                     } else {
                         final Intent finalTarget = target;
@@ -119,7 +118,7 @@ public class FileChooseActivity extends Activity {
                         });
                     }
                 } else if (acceptType.contains("audio")) {
-                    if (PermChecker.hasPermissionAppOps(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE})) {
+                    if (PermChecker.hasPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE})) {
                         startUploadFile(target);
                     } else {
                         final Intent finalTarget = target;
@@ -142,7 +141,7 @@ public class FileChooseActivity extends Activity {
     }
 
     private FileChooseCallback getCurrentCallback() {
-        return callbackMap.get(currentCallbackKey) != null ? callbackMap.get(currentCallbackKey).get() : null;
+        return callbackMap.get(currentCallbackKey);
     }
 
     private void startUploadFile(Intent target) {

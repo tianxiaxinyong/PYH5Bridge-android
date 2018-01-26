@@ -1,16 +1,27 @@
 package com.pycredit.h5sdk.perm;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PermissionGroupInfo;
+import android.content.pm.PermissionInfo;
 import android.net.Uri;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.AppOpsManagerCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.PermissionChecker;
 import android.text.TextUtils;
+
+import com.pycredit.h5sdk.perm.support.CNPermChecker;
+import com.pycredit.h5sdk.perm.support.ManufacturerSupportUtil;
+import com.pycredit.h5sdk.perm.support.PermissionsPageManager;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -48,6 +59,8 @@ public class PermChecker implements ActivityDelegate {
     protected String[] requestPerms;
     protected int permRequestCode;
 
+    public int settingLaunchMode = -1;
+
     public PermChecker(Activity activity) {
         activityRef = new WeakReference<>(activity);
         contextRef = new WeakReference<Context>(activity);
@@ -59,28 +72,53 @@ public class PermChecker implements ActivityDelegate {
     }
 
     /**
-     * 检查权限
+     * 检查是否有权限
      *
      * @param context
      * @param perms
      * @return
      */
-    public static boolean hasPermissionAppOps(Context context, String[] perms) {
+    public static boolean hasPermissions(Context context, String[] perms) {
         for (String perm : perms) {
-            String op = AppOpsManagerCompat.permissionToOp(perm);
-            if (TextUtils.isEmpty(op)) {
-                continue;
+            //普通处理
+            if (getTargetVersion(context) >= Build.VERSION_CODES.M) {
+                if (ContextCompat.checkSelfPermission(context, perm) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
+            } else {
+                if (PermissionChecker.checkSelfPermission(context, perm) != PermissionChecker.PERMISSION_GRANTED) {
+                    return false;
+                }
             }
-            int result = AppOpsManagerCompat.noteProxyOp(context, op, context.getPackageName());//先从底层查
-            if (result == AppOpsManagerCompat.MODE_IGNORED) {
-                return false;
+            //针对国内厂商处理
+            if (ManufacturerSupportUtil.isUnderMNeedChecked(true)) {//5.x小米、魅族、OPPO等要特殊检查
+                if (!CNPermChecker.isPermissionGranted(context, perm)) {
+                    return false;
+                }
             }
-            result = ContextCompat.checkSelfPermission(context, perm);
-            if (result != PackageManager.PERMISSION_GRANTED) {
-                return false;
+            if ((PermissionsPageManager.isMEIZU() || PermissionsPageManager.isSMARTISAN()) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {//6.0以上魅族、锤子手机拒绝的权限用普通API返回有权限,要特殊检查
+                if (!CNPermChecker.isPermissionGranted(context, perm)) {
+                    return false;
+                }
             }
         }
         return true;
+    }
+
+    /**
+     * 获取目标SDK版本
+     *
+     * @param context
+     * @return
+     */
+    private static int getTargetVersion(Context context) {
+        try {
+            PackageInfo packageInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            return packageInfo.applicationInfo.targetSdkVersion;
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
 
@@ -145,6 +183,21 @@ public class PermChecker implements ActivityDelegate {
     }
 
     @Override
+    public void onResume() {
+        if (settingLaunchMode == ActivityInfo.LAUNCH_SINGLE_TASK || settingLaunchMode == ActivityInfo.LAUNCH_SINGLE_INSTANCE) {
+            if (hasPermissions(contextRef.get(), requestPerms)) {
+                if (callback != null) {
+                    callback.onRequestSuccess();
+                }
+            } else {
+                if (callback != null) {
+                    callback.onRequestFail();
+                }
+            }
+        }
+    }
+
+    @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == permRequestCode) {
             if (grantResults != null) {
@@ -161,29 +214,96 @@ public class PermChecker implements ActivityDelegate {
                 if (!denied.isEmpty()) {//有部份没有权限
                     if (somePermissionPermanentlyDenied(denied)) {
                         //跳到设置页面
-                        if (getSettingsIntent() != null) {
-                            if (fragmentRef != null && fragmentRef.get() != null) {
-                                fragmentRef.get().startActivityForResult(getSettingsIntent(), SETTING_REQUEST_CODE);
-                            } else if (activityRef != null && activityRef.get() != null) {
-                                activityRef.get().startActivityForResult(getSettingsIntent(), SETTING_REQUEST_CODE);
-                            }
-                        }
+                        showSettings();
                     } else {
-                        //没有获取到权限
-                        if (callback != null) {
-                            callback.onRequestFail();
+                        if (hasPermissions(contextRef.get(), requestPerms)) { //有权限了
+                            if (callback != null) {
+                                callback.onRequestSuccess();
+                            }
+                        } else {
+                            //跳到设置页面
+                            showSettings();
                         }
                     }
                 } else {
-                    //有权限了
-                    if (callback != null) {
-                        callback.onRequestSuccess();
+                    if (!hasPermissions(contextRef.get(), requestPerms)) {
+                        //跳到设置页面
+                        showSettings();
+                    } else {
+                        //有权限了
+                        if (callback != null) {
+                            callback.onRequestSuccess();
+                        }
                     }
                 }
             }
         }
     }
 
+    /**
+     * 显示权限设置页面
+     *
+     * @return
+     */
+    public void showSettings() {
+        if (contextRef != null && contextRef.get() != null) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("部分权限被禁止，请到权限设置页面打开以下权限：\n");
+            CharSequence permGroupLabel = getPermGroupLabel(contextRef.get(), requestPerms);
+            if (!TextUtils.isEmpty(permGroupLabel)) {
+                sb.append(permGroupLabel);
+            }
+            new AlertDialog.Builder(contextRef.get())
+                    .setMessage(sb.toString())
+                    .setPositiveButton("去设置", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Intent settingsIntent = getPermSettingsIntent();
+                            if (settingsIntent != null) {
+                                if (fragmentRef != null && fragmentRef.get() != null) {
+                                    try {
+                                        settingLaunchMode = settingsIntent.getIntExtra(PermissionsPageManager.LAUNCH_MODE, ActivityInfo.LAUNCH_MULTIPLE);
+                                        fragmentRef.get().startActivityForResult(settingsIntent, SETTING_REQUEST_CODE);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        settingLaunchMode = ActivityInfo.LAUNCH_MULTIPLE;
+                                        fragmentRef.get().startActivityForResult(getSettingsIntent(), SETTING_REQUEST_CODE);
+                                    }
+                                } else if (activityRef != null && activityRef.get() != null) {
+                                    try {
+                                        settingLaunchMode = settingsIntent.getIntExtra(PermissionsPageManager.LAUNCH_MODE, ActivityInfo.LAUNCH_MULTIPLE);
+                                        activityRef.get().startActivityForResult(settingsIntent, SETTING_REQUEST_CODE);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        settingLaunchMode = ActivityInfo.LAUNCH_MULTIPLE;
+                                        activityRef.get().startActivityForResult(getSettingsIntent(), SETTING_REQUEST_CODE);
+                                    }
+                                }
+                            } else {
+                                if (callback != null) {
+                                    callback.onRequestFail();
+                                }
+                            }
+                        }
+                    }).setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    if (callback != null) {
+                        callback.onRequestFail();
+                    }
+                }
+            }).setCancelable(false).show();
+
+        }
+    }
+
+    public Intent getPermSettingsIntent() {
+        if (contextRef != null && contextRef.get() != null) {
+            Intent intent = PermissionsPageManager.getIntent((Activity) contextRef.get());
+            return intent != null ? intent : getSettingsIntent();
+        }
+        return null;
+    }
 
     /**
      * 获取设置页面intent
@@ -201,8 +321,8 @@ public class PermChecker implements ActivityDelegate {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == SETTING_REQUEST_CODE) {
-            if (hasPermissionAppOps(contextRef.get(), requestPerms)) {
+        if (requestCode == SETTING_REQUEST_CODE && settingLaunchMode != ActivityInfo.LAUNCH_SINGLE_TASK && settingLaunchMode != ActivityInfo.LAUNCH_SINGLE_INSTANCE) {
+            if (hasPermissions(contextRef.get(), requestPerms)) {
                 if (callback != null) {
                     callback.onRequestSuccess();
                 }
@@ -212,5 +332,46 @@ public class PermChecker implements ActivityDelegate {
                 }
             }
         }
+    }
+
+    /**
+     * 获取权限名称
+     *
+     * @param context
+     * @param perms
+     * @return
+     */
+    public static CharSequence getPermGroupLabel(Context context, String... perms) {
+        List<CharSequence> permGroupLabelList = new ArrayList<>();
+        PackageManager packageManager = context.getPackageManager();
+        if (perms != null && perms.length > 0) {
+            try {
+                for (String perm : perms) {
+                    PermissionInfo permissionInfo = packageManager.getPermissionInfo(perm, 0);
+                    if (permissionInfo != null) {
+                        PermissionGroupInfo permissionGroupInfo = packageManager.getPermissionGroupInfo(permissionInfo.group, 0);
+                        if (permissionGroupInfo != null) {
+                            CharSequence label = permissionGroupInfo.loadLabel(packageManager);
+                            if (!permGroupLabelList.contains(label)) {
+                                permGroupLabelList.add(label);
+                            }
+                        }
+                    }
+                }
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        if (!permGroupLabelList.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < permGroupLabelList.size(); i++) {
+                sb.append(permGroupLabelList.get(i));
+                if (i != permGroupLabelList.size() - 1) {
+                    sb.append("\n");
+                }
+            }
+            return sb.toString();
+        }
+        return null;
     }
 }

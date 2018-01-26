@@ -145,7 +145,7 @@ public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegat
     @Override
     public void onGeolocationPermissionsShowPrompt(final String origin, final GeolocationPermissions.Callback callback) {
         if (contextRef != null && contextRef.get() != null) {
-            if (PermChecker.hasPermissionAppOps(contextRef.get(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION})) {
+            if (PermChecker.hasPermissions(contextRef.get(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION})) {
                 callback.invoke(origin, true, true);
             } else {
                 PermRequestActivity.requestPermissions(contextRef.get(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, new PermChecker.RequestPermCallback() {
@@ -193,7 +193,7 @@ public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegat
         } else {
             if (contextRef != null && contextRef.get() != null) {
                 String[] perms = permList.toArray(new String[permList.size()]);
-                if (PermChecker.hasPermissionAppOps(contextRef.get(), perms)) {
+                if (PermChecker.hasPermissions(contextRef.get(), perms)) {
                     request.grant(request.getResources());
                 } else {
                     PermRequestActivity.requestPermissions(contextRef.get(), perms, new PermChecker.RequestPermCallback() {

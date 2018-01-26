@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 
 import com.pycredit.h5sdk.perm.PermChecker;
 
@@ -16,10 +17,9 @@ import com.pycredit.h5sdk.perm.PermChecker;
  * @date 2017/11/21
  */
 
-public class PermRequestActivity extends Activity {
+public class PermRequestActivity extends Activity implements ActivityCompat.OnRequestPermissionsResultCallback {
     public static final String EXTRA_PERM_ARRAY = "extra_perm_array";
     public static final int PERM_REQUEST_CODE = 0X1111;
-    public static final int SETTING_REQUEST_CODE = 0X1112;
 
     private PermChecker permChecker;
     private String[] perms;
@@ -68,8 +68,15 @@ public class PermRequestActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (permChecker != null) {
+            permChecker.onResume();
+        }
+    }
+
+    @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERM_REQUEST_CODE) {
             if (permChecker != null) {
                 permChecker.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -80,10 +87,8 @@ public class PermRequestActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == SETTING_REQUEST_CODE) {
-            if (permChecker != null) {
-                permChecker.onActivityResult(requestCode, resultCode, data);
-            }
+        if (permChecker != null) {
+            permChecker.onActivityResult(requestCode, resultCode, data);
         }
     }
 

@@ -14,7 +14,6 @@ import android.support.v4.content.FileProvider;
 import com.pycredit.h5sdk.capture.CaptureCallback;
 
 import java.io.File;
-import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,12 +35,12 @@ public class CaptureActivity extends Activity {
 
     private String savePath;
 
-    private static Map<Long, WeakReference<CaptureCallback>> callbackMap = new HashMap<>();
+    private static Map<Long, CaptureCallback> callbackMap = new HashMap<>();
 
     private long currentCallbackKey;
 
     public static void setCallback(long callbackKey, CaptureCallback callback) {
-        callbackMap.put(callbackKey, new WeakReference<>(callback));
+        callbackMap.put(callbackKey, callback);
     }
 
     public static void startCapture(Context context, String savePath, CaptureCallback callback) {
@@ -79,7 +78,7 @@ public class CaptureActivity extends Activity {
     }
 
     private CaptureCallback getCurrentCallback() {
-        return callbackMap.get(currentCallbackKey) != null ? callbackMap.get(currentCallbackKey).get() : null;
+        return callbackMap.get(currentCallbackKey);
     }
 
     @Override

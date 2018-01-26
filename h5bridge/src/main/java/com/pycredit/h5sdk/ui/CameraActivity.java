@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -65,12 +64,12 @@ public class CameraActivity extends Activity {
 
     private int mCurrentFlash;
 
-    private static Map<Long, WeakReference<CaptureCallback>> callbackMap = new HashMap<>();
+    private static Map<Long, CaptureCallback> callbackMap = new HashMap<>();
 
     private long currentCallbackKey;
 
     public static void setCallback(long callbackKey, CaptureCallback callback) {
-        callbackMap.put(callbackKey, new WeakReference<>(callback));
+        callbackMap.put(callbackKey, callback);
     }
 
     public static void startCapture(Context context, CaptureConfig captureConfig, String savePath, CaptureCallback callback) {
@@ -109,7 +108,7 @@ public class CameraActivity extends Activity {
     }
 
     private CaptureCallback getCurrentCallback() {
-        return callbackMap.get(currentCallbackKey) != null ? callbackMap.get(currentCallbackKey).get() : null;
+        return callbackMap.get(currentCallbackKey);
     }
 
     private void initViews() {
@@ -136,16 +135,10 @@ public class CameraActivity extends Activity {
                                 os = new FileOutputStream(file);
                                 os.write(data);
                                 os.close();
-                                if (getCurrentCallback() != null) {
-                                    getCurrentCallback().onSuccess(savePath);
-                                    callbackMap.remove(currentCallbackKey);
-                                }
+                                captureSuccess();
                             } catch (IOException e) {
                                 e.printStackTrace();
-                                if (getCurrentCallback() != null) {
-                                    getCurrentCallback().onFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getCode(), JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getMsg());
-                                    callbackMap.remove(currentCallbackKey);
-                                }
+                                captureFail();
                             } finally {
                                 if (os != null) {
                                     try {
@@ -155,7 +148,6 @@ public class CameraActivity extends Activity {
                                     }
                                 }
                                 takingPic = false;
-                                finish();
                             }
                         }
                     });
@@ -216,10 +208,20 @@ public class CameraActivity extends Activity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        cameraView.stop();
+        try {
+            cameraView.stop();
+        } catch (Exception e) {
+            e.printStackTrace();
+            captureFail();
+        }
         setContentView(R.layout.activity_camera);
         initViews();
-        cameraView.start();
+        try {
+            cameraView.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+            captureFail();
+        }
     }
 
     @Override
@@ -242,13 +244,39 @@ public class CameraActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        cameraView.start();
+        try {
+            cameraView.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+            captureFail();
+        }
     }
 
     @Override
     protected void onPause() {
-        cameraView.stop();
+        try {
+            cameraView.stop();
+        } catch (Exception e) {
+            e.printStackTrace();
+            captureFail();
+        }
         super.onPause();
+    }
+
+    private void captureSuccess() {
+        if (getCurrentCallback() != null) {
+            getCurrentCallback().onSuccess(savePath);
+            callbackMap.remove(currentCallbackKey);
+        }
+        finish();
+    }
+
+    private void captureFail() {
+        if (getCurrentCallback() != null) {
+            getCurrentCallback().onFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getCode(), JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getMsg());
+            callbackMap.remove(currentCallbackKey);
+        }
+        finish();
     }
 
     @Override
