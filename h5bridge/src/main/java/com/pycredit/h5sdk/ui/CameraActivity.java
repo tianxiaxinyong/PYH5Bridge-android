@@ -5,14 +5,21 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.view.View;
+import android.widget.Chronometer;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
+import com.google.android.cameraview.CameraHelper;
 import com.google.android.cameraview.CameraView;
 import com.pycredit.h5sdk.R;
 import com.pycredit.h5sdk.capture.CaptureCallback;
@@ -35,14 +42,20 @@ public class CameraActivity extends Activity {
 
     public static final String EXTRA_CAPTURE_CONFIG = "extra_capture_config";
     public static final String EXTRA_SAVE_PATH = "extra_save_path";
+    public static final String EXTRA_IS_RECORD_VIDEO = "extra_is_record_video";
     public static final String EXTRA_CALLBACK_KEY = "extra_callback_key";
 
     private CameraView cameraView;
     private ImageView ivBack;
     private ImageView ivCapture;
+    private RelativeLayout rlDone;
+    private ImageView ivUndo;
+    private ImageView ivConfirm;
+    private LinearLayout llSettings;
     private ImageView ivFlash;
     private ImageView ivSwitchCamera;
     private ImageView ivCover;
+    private Chronometer cmTimer;
 
     private CaptureConfig captureConfig;
 
@@ -68,17 +81,24 @@ public class CameraActivity extends Activity {
 
     private long currentCallbackKey;
 
+    private boolean isVideoRecord;
+
     public static void setCallback(long callbackKey, CaptureCallback callback) {
         callbackMap.put(callbackKey, callback);
     }
 
     public static void startCapture(Context context, CaptureConfig captureConfig, String savePath, CaptureCallback callback) {
+        startCapture(context, captureConfig, savePath, callback, false);
+    }
+
+    public static void startCapture(Context context, CaptureConfig captureConfig, String savePath, CaptureCallback callback, boolean isVideoRecord) {
         long callbackKey = System.currentTimeMillis();
         setCallback(callbackKey, callback);
         Intent intent = new Intent(context, CameraActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra(EXTRA_CAPTURE_CONFIG, captureConfig);
         intent.putExtra(EXTRA_SAVE_PATH, savePath);
+        intent.putExtra(EXTRA_IS_RECORD_VIDEO, isVideoRecord);
         intent.putExtra(EXTRA_CALLBACK_KEY, callbackKey);
         context.startActivity(intent);
     }
@@ -90,10 +110,12 @@ public class CameraActivity extends Activity {
         if (savedInstanceState != null) {
             captureConfig = (CaptureConfig) savedInstanceState.getSerializable(EXTRA_CAPTURE_CONFIG);
             savePath = savedInstanceState.getString(EXTRA_SAVE_PATH);
+            isVideoRecord = savedInstanceState.getBoolean(EXTRA_IS_RECORD_VIDEO, false);
             currentCallbackKey = savedInstanceState.getLong(EXTRA_CALLBACK_KEY);
         } else {
             captureConfig = (CaptureConfig) getIntent().getSerializableExtra(EXTRA_CAPTURE_CONFIG);
             savePath = getIntent().getStringExtra(EXTRA_SAVE_PATH);
+            isVideoRecord = getIntent().getBooleanExtra(EXTRA_IS_RECORD_VIDEO, false);
             currentCallbackKey = getIntent().getLongExtra(EXTRA_CALLBACK_KEY, 0);
         }
         if (captureConfig == null) {
@@ -115,10 +137,14 @@ public class CameraActivity extends Activity {
         cameraView = (CameraView) findViewById(R.id.cameraView);
         ivBack = (ImageView) findViewById(R.id.iv_back);
         ivCapture = (ImageView) findViewById(R.id.iv_capture);
+        rlDone = (RelativeLayout) findViewById(R.id.rl_done);
+        ivUndo = (ImageView) findViewById(R.id.iv_undo);
+        ivConfirm = (ImageView) findViewById(R.id.iv_confirm);
+        llSettings = (LinearLayout) findViewById(R.id.ll_settings);
         ivFlash = (ImageView) findViewById(R.id.iv_flash);
         ivSwitchCamera = (ImageView) findViewById(R.id.iv_switch_camera);
         ivCover = (ImageView) findViewById(R.id.iv_cover);
-
+        cmTimer = (Chronometer) findViewById(R.id.cm_timer);
         cameraView.addCallback(new CameraView.Callback() {
             private boolean takingPic;
 
@@ -138,7 +164,7 @@ public class CameraActivity extends Activity {
                                 captureSuccess();
                             } catch (IOException e) {
                                 e.printStackTrace();
-                                captureFail();
+                                captureFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE);
                             } finally {
                                 if (os != null) {
                                     try {
@@ -153,6 +179,11 @@ public class CameraActivity extends Activity {
                     });
                 }
             }
+
+            @Override
+            public void onVideoRecorded(String savePath) {
+                super.onVideoRecorded(savePath);
+            }
         });
         ivBack.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -164,8 +195,56 @@ public class CameraActivity extends Activity {
             @Override
             public void onClick(View v) {
                 if (cameraView.isCameraOpened()) {
-                    cameraView.takePicture();
+                    if (isVideoRecord) {
+                        if (!cameraView.isRecordering()) {
+                            llSettings.setVisibility(View.GONE);
+                            CamcorderProfile camcorderProfile = CameraHelper.chooseOptimalCamcorderProfile(cameraView.getCameraId(), 640, 480);
+                            if (camcorderProfile == null) {
+                                return;
+                            }
+                            cameraView.startVideoRecord(savePath, camcorderProfile, new MediaRecorder.OnInfoListener() {
+                                @Override
+                                public void onInfo(MediaRecorder mr, int what, int extra) {
+
+                                }
+                            }, new MediaRecorder.OnErrorListener() {
+                                @Override
+                                public void onError(MediaRecorder mr, int what, int extra) {
+                                    captureFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE);
+                                }
+                            });
+                            cmTimer.setVisibility(View.VISIBLE);
+                            cmTimer.setBase(SystemClock.elapsedRealtime());
+                            cmTimer.start();
+                            ivCapture.setImageResource(R.drawable.ic_stop);
+                        } else {
+                            cameraView.stopVideoRecord();
+                            cmTimer.stop();
+                            cmTimer.setVisibility(View.GONE);
+                            ivCapture.setVisibility(View.GONE);
+                            rlDone.setVisibility(View.VISIBLE);
+                        }
+                    } else {
+                        cameraView.takePicture();
+                    }
                 }
+            }
+        });
+        ivUndo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                llSettings.setVisibility(View.VISIBLE);
+                ivCapture.setVisibility(View.VISIBLE);
+                ivCapture.setImageResource(R.drawable.ic_record);
+                rlDone.setVisibility(View.GONE);
+                cameraView.stop();
+                cameraView.start();
+            }
+        });
+        ivConfirm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                captureSuccess();
             }
         });
         ivFlash.setOnClickListener(new View.OnClickListener() {
@@ -203,6 +282,11 @@ public class CameraActivity extends Activity {
                 ivCover.setImageResource(R.drawable.img_cover_in_hand);
                 break;
         }
+        if (isVideoRecord) {
+            ivCapture.setImageResource(R.drawable.ic_record);
+        } else {
+            ivCapture.setImageResource(R.drawable.ic_camera);
+        }
     }
 
     @Override
@@ -212,7 +296,7 @@ public class CameraActivity extends Activity {
             cameraView.stop();
         } catch (Exception e) {
             e.printStackTrace();
-            captureFail();
+            captureFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE);
         }
         setContentView(R.layout.activity_camera);
         initViews();
@@ -220,7 +304,7 @@ public class CameraActivity extends Activity {
             cameraView.start();
         } catch (Exception e) {
             e.printStackTrace();
-            captureFail();
+            captureFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE);
         }
     }
 
@@ -228,6 +312,7 @@ public class CameraActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         outState.putSerializable(EXTRA_CAPTURE_CONFIG, captureConfig);
         outState.putString(EXTRA_SAVE_PATH, savePath);
+        outState.putBoolean(EXTRA_IS_RECORD_VIDEO, isVideoRecord);
         outState.putLong(EXTRA_CALLBACK_KEY, currentCallbackKey);
         super.onSaveInstanceState(outState);
     }
@@ -248,7 +333,7 @@ public class CameraActivity extends Activity {
             cameraView.start();
         } catch (Exception e) {
             e.printStackTrace();
-            captureFail();
+            captureFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE);
         }
     }
 
@@ -258,7 +343,7 @@ public class CameraActivity extends Activity {
             cameraView.stop();
         } catch (Exception e) {
             e.printStackTrace();
-            captureFail();
+            captureFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE);
         }
         super.onPause();
     }
@@ -271,17 +356,24 @@ public class CameraActivity extends Activity {
         finish();
     }
 
-    private void captureFail() {
+    private void captureFail(JsCallAppErrorCode errorCode) {
         if (getCurrentCallback() != null) {
-            getCurrentCallback().onFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getCode(), JsCallAppErrorCode.ERROR_IMAGE_HANDLE.getMsg());
+            getCurrentCallback().onFail(errorCode.getCode(), errorCode.getMsg());
             callbackMap.remove(currentCallbackKey);
+        }
+        try {
+            new File(savePath).delete();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         finish();
     }
 
     @Override
     protected void onDestroy() {
-        callbackMap.remove(currentCallbackKey);
+        if (getCurrentCallback() != null) {
+            captureFail(JsCallAppErrorCode.ERROR_CAMERA_USER_CANCEL);
+        }
         super.onDestroy();
         if (mBackgroundHandler != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {

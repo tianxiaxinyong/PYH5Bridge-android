@@ -118,7 +118,7 @@ public void onBackPressed() {
 ```  
 @Override
 public boolean shouldOverrideUrlLoading(WebView view, String url) {
-    if (h5SDKHelper.shouldOverrideUrlLoading(view, url)) {
+    if (h5SDKHelper.shouldOverrideUrlLoading(view, url)) {//注意这部份SDK处理放在本方法最前面
         return true;
     }
     return super.shouldOverrideUrlLoading(view, url);
@@ -194,5 +194,3 @@ android:screenOrientation="portrait"
 
 [更新日志](change_log.md)  
 
-
-[FAQ](FAQ.md)  

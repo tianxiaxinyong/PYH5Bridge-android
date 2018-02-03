@@ -30,6 +30,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by huangx on 2017/10/19.
@@ -42,6 +43,8 @@ public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegat
     protected WeakReference<Context> contextRef;
     protected WeakReference<Activity> activityRef;
     protected WeakReference<Fragment> fragmentRef;
+
+    public static AtomicBoolean fileChooserEnable = new AtomicBoolean(false);
 
     private Object mPayTask;
 
@@ -88,6 +91,7 @@ public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegat
 
     @Override
     public void openFileChooser(final ValueCallback<Uri> uploadFile, String acceptType, String capture) {
+        fileChooserEnable.set(true);
         if (contextRef != null && contextRef.get() != null) {
             FileChooseActivity.startFileChoose(contextRef.get(), acceptType, !TextUtils.isEmpty(capture), new FileChooseActivity.FileChooseCallback() {
                 @Override
@@ -106,6 +110,7 @@ public class H5JsHelper implements WebViewClientDelegate, WebChromeClientDelegat
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     @Override
     public boolean onShowFileChooser(WebView webView, final ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+        fileChooserEnable.set(true);
         if (contextRef != null && contextRef.get() != null) {
             String acceptType = "*/*";
             boolean captureEnabled = fileChooserParams.isCaptureEnabled();

@@ -43,7 +43,7 @@ public class DemoActivity extends AppCompatActivity {
 //        1、如果你的WebView没有别的特殊处理,只需要调用initDefaultSettings就可以了
 //        h5SDKHelper.initDefaultSettings();
 
-//        2、如果你的WebView暂时没有自定义了WebViewClient与setWebChromeClient，同时你又有一些特处理，可以使用DefaultWebViewClient与DefaultWebChromeClient的子类
+//        2、如果你的WebView暂时没有自定义了WebViewClient与WebChromeClient，同时你又有一些特处理，可以使用DefaultWebViewClient与DefaultWebChromeClient的子类
 //        mWebView.setWebViewClient(new DefaultWebViewClient(h5SDKHelper) {
 //            //实现你的处理(注意不要覆盖了DefaultWebViewClient中的方法)
 //        });
@@ -51,7 +51,7 @@ public class DemoActivity extends AppCompatActivity {
 //            //实现你的处理(注意不要覆盖了DefaultWebChromeClient中的方法)
 //        });
 
-//        3、如果你的WebView已经自定义了WebViewClient，与setWebChromeClient，则在以下相应方法中调用h5SDKHelper的相应方法
+//        3、如果你的WebView已经自定义了WebViewClient，与WebChromeClient，则在以下相应方法中调用h5SDKHelper的相应方法
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -93,10 +93,9 @@ public class DemoActivity extends AppCompatActivity {
         h5SDKHelper.setBanner("https://apk-txxy.oss-cn-shenzhen.aliyuncs.com/test_ad.png", new BannerCallback() {
             @Override
             public void onBannerClick() {
-                Toast.makeText(getApplicationContext(), "正常广告被点击了", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "广告被点击了", Toast.LENGTH_SHORT).show();
             }
         });
-//        h5SDKHelper.setCapture(new SystemCaptureImpl());
         h5SDKHelper.setCapture(new CustomCaptureImpl());
         mWebView.loadUrl("**使用鹏元提供的渠道**");
     }

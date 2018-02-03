@@ -156,4 +156,21 @@ public class PYCreditJsBridge<T extends PYCreditJsCallAppProcess> extends BaseBr
             }
         });
     }
+
+    /**
+     * 检查是否支持视频录制
+     *
+     * @param params
+     */
+    @JavascriptInterface
+    public void checkVideoRecording(String params) {
+        runOnUiThread(new JsCallAppRunner<PYCreditJsCallAppProcess>(getJsCallAppProcess(), params, this) {
+            @Override
+            public void run() {
+                if (process != null) {
+                    process.checkVideoRecording(parser.decode(params), parser, callback);
+                }
+            }
+        });
+    }
 }

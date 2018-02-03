@@ -19,6 +19,8 @@ package com.google.android.cameraview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -332,6 +334,10 @@ public class CameraView extends FrameLayout {
         return mImpl.getFacing();
     }
 
+    public int getCameraId() {
+        return mImpl.getCameraId();
+    }
+
     /**
      * Gets all the aspect ratios supported by the current camera.
      */
@@ -407,6 +413,18 @@ public class CameraView extends FrameLayout {
      */
     public void takePicture() {
         mImpl.takePicture();
+    }
+
+    public boolean isRecordering(){
+       return mImpl.isRecording();
+    }
+
+    public boolean startVideoRecord(String outputPath, CamcorderProfile profile, MediaRecorder.OnInfoListener onInfoListener, MediaRecorder.OnErrorListener onErrorListener) {
+        return mImpl.startVideoRecord(outputPath, profile, onInfoListener, onErrorListener);
+    }
+
+    public void stopVideoRecord() {
+        mImpl.stopVideoRecord();
     }
 
     private class CallbackBridge implements CameraViewImpl.Callback {
@@ -536,6 +554,10 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPictureTaken(CameraView cameraView, byte[] data) {
+        }
+
+        public void onVideoRecorded(String savePath){
+
         }
     }
 

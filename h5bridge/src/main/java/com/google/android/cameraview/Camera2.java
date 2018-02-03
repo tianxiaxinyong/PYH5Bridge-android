@@ -28,15 +28,20 @@ import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.CamcorderProfile;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaRecorder;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -196,6 +201,10 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
+    private MediaRecorder mMediaRecorder;
+
+    private boolean isRecording = false;
+
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
@@ -232,6 +241,158 @@ class Camera2 extends CameraViewImpl {
             mImageReader.close();
             mImageReader = null;
         }
+        releaseMediaRecorder();
+    }
+
+    @Override
+    boolean isRecording() {
+        return isRecording;
+    }
+
+    @Override
+    boolean startVideoRecord(String outputPath, CamcorderProfile profile, MediaRecorder.OnInfoListener onInfoListener, MediaRecorder.OnErrorListener onErrorListener) {
+        closePreviewSession();
+        if (setUpMediaRecorder(outputPath, profile, onInfoListener, onErrorListener)) {
+            Size previewSize = chooseOptimalSize();
+            mPreview.setBufferSize(previewSize.getWidth(), previewSize.getHeight());
+            try {
+                List<Surface> surfaces = new ArrayList<>();
+
+                // Set up Surface for the camera preview
+                mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+                Surface previewSurface = mPreview.getSurface();
+                surfaces.add(previewSurface);
+                mPreviewRequestBuilder.addTarget(previewSurface);
+
+                // Set up Surface for the MediaRecorder
+                Surface recorderSurface = mMediaRecorder.getSurface();
+                surfaces.add(recorderSurface);
+                mPreviewRequestBuilder.addTarget(recorderSurface);
+
+                mCamera.createCaptureSession(surfaces, new CameraCaptureSession.StateCallback() {
+                    @Override
+                    public void onConfigured(@NonNull CameraCaptureSession session) {
+                        if (mCamera == null) {
+                            return;
+                        }
+                        mCaptureSession = session;
+                        updateAutoFocus();
+                        updateFlash();
+                        try {
+                            mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
+                                    mCaptureCallback, null);
+                            isRecording = true;
+                            mMediaRecorder.start();
+                        } catch (CameraAccessException e) {
+                            Log.e(TAG, "Failed to start camera preview because it couldn't access camera", e);
+                        } catch (IllegalStateException e) {
+                            Log.e(TAG, "Failed to start camera preview.", e);
+                        }
+                    }
+
+                    @Override
+                    public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                        Log.e(TAG, "Failed to configure capture session.");
+                    }
+
+                    @Override
+                    public void onClosed(@NonNull CameraCaptureSession session) {
+                        if (mCaptureSession != null && mCaptureSession.equals(session)) {
+                            mCaptureSession = null;
+                        }
+                    }
+                }, null);
+            } catch (CameraAccessException e) {
+                throw new RuntimeException("Failed to start camera session");
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    void stopVideoRecord() {
+        if (isRecording) {
+            try {
+                isRecording = false;
+                mMediaRecorder.stop();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            releaseMediaRecorder();
+        }
+    }
+
+    boolean setUpMediaRecorder(String outputPath, CamcorderProfile profile, MediaRecorder.OnInfoListener onInfoListener, MediaRecorder.OnErrorListener onErrorListener) {
+        try {
+            mMediaRecorder = new MediaRecorder();
+            mMediaRecorder.setOnInfoListener(onInfoListener);
+            mMediaRecorder.setOnErrorListener(onErrorListener);
+            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+            int sensorOrientation = mCameraCharacteristics.get(
+                    CameraCharacteristics.SENSOR_ORIENTATION);
+            mMediaRecorder.setOrientationHint(calcCameraRotation(mDisplayOrientation, sensorOrientation));
+            mMediaRecorder.setProfile(profile);
+            mMediaRecorder.setOutputFile(outputPath);
+            mMediaRecorder.prepare();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private void releaseMediaRecorder() {
+        if (mMediaRecorder != null) {
+            // clear recorder configuration
+            mMediaRecorder.reset();
+            // release the recorder object
+            mMediaRecorder.release();
+            mMediaRecorder = null;
+            // Lock camera for later use i.e taking it back from MediaRecorder.
+            // MediaRecorder doesn't need it anymore and we will release it if the activity pauses.
+            isRecording = false;
+        }
+    }
+
+
+    private void closePreviewSession() {
+        if (mCaptureSession != null) {
+            mCaptureSession.close();
+            mCaptureSession = null;
+        }
+    }
+
+    /**
+     * Calculate camera rotation
+     * <p>
+     * This calculation is applied to the output JPEG either via Exif Orientation tag
+     * or by actually transforming the bitmap. (Determined by vendor camera API implementation)
+     * <p>
+     * Note: This is not the same calculation as the display orientation
+     *
+     * @param screenOrientationDegrees Screen orientation in degrees
+     * @return Number of degrees to rotate image in order for it to view correctly.
+     */
+    private int calcCameraRotation(int screenOrientationDegrees, int sensorOrientation) {
+        if (mFacing == Constants.FACING_FRONT) {
+            return (sensorOrientation + screenOrientationDegrees) % 360;
+        } else {  // back-facing
+            final int landscapeFlip = isLandscape(screenOrientationDegrees) ? 180 : 0;
+            return (sensorOrientation + screenOrientationDegrees + landscapeFlip) % 360;
+        }
+    }
+
+    /**
+     * Test if the supplied orientation is in landscape.
+     *
+     * @param orientationDegrees Orientation in degrees (0,90,180,270)
+     * @return True if in landscape, false if portrait
+     */
+    private boolean isLandscape(int orientationDegrees) {
+        return (orientationDegrees == Constants.LANDSCAPE_90 ||
+                orientationDegrees == Constants.LANDSCAPE_270);
     }
 
     @Override
@@ -244,6 +405,9 @@ class Camera2 extends CameraViewImpl {
         if (mFacing == facing) {
             return;
         }
+        if (isRecording()) {
+            return;
+        }
         mFacing = facing;
         if (isCameraOpened()) {
             stop();
@@ -254,6 +418,15 @@ class Camera2 extends CameraViewImpl {
     @Override
     int getFacing() {
         return mFacing;
+    }
+
+    @Override
+    int getCameraId() {
+        try {
+            return Integer.parseInt(mCameraId);
+        } catch (Exception e) {
+        }
+        return 0;
     }
 
     @Override

@@ -19,8 +19,11 @@ package com.google.android.cameraview;
 import android.annotation.SuppressLint;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.support.v4.util.SparseArrayCompat;
+import android.util.Log;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
@@ -32,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("deprecation")
 class Camera1 extends CameraViewImpl {
-
+    private static final String TAG = "Camera1";
     private static final int INVALID_CAMERA_ID = -1;
 
     private static final SparseArrayCompat<String> FLASH_MODES = new SparseArrayCompat<>();
@@ -63,6 +66,8 @@ class Camera1 extends CameraViewImpl {
 
     private boolean mShowingPreview;
 
+    private boolean isRecording = false;
+
     private boolean mAutoFocus;
 
     private int mFacing;
@@ -70,6 +75,8 @@ class Camera1 extends CameraViewImpl {
     private int mFlash;
 
     private int mDisplayOrientation;
+
+    private MediaRecorder mMediaRecorder;
 
     Camera1(Callback callback, PreviewImpl preview) {
         super(callback, preview);
@@ -103,6 +110,84 @@ class Camera1 extends CameraViewImpl {
         }
         mShowingPreview = false;
         releaseCamera();
+        releaseMediaRecorder();
+    }
+
+    @Override
+    boolean isRecording() {
+        return isRecording;
+    }
+
+    @Override
+    boolean startVideoRecord(String outputPath, CamcorderProfile profile, MediaRecorder.OnInfoListener onInfoListener, MediaRecorder.OnErrorListener onErrorListener) {
+        // BEGIN_INCLUDE (configure_media_recorder)
+        mMediaRecorder = new MediaRecorder();
+
+        mMediaRecorder.setOnInfoListener(onInfoListener);
+        mMediaRecorder.setOnErrorListener(onErrorListener);
+        // Step 1: Unlock and set camera to MediaRecorder
+        mCamera.unlock();
+        mMediaRecorder.setCamera(mCamera);
+
+        // Step 2: Set sources
+        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+        mMediaRecorder.setOrientationHint(calcCameraRotation(mDisplayOrientation));
+        // Step 3: Set a CamcorderProfile (requires API Level 8 or higher)
+        Log.d(TAG, "startVideoRecorder: profile = "+profile);
+        mMediaRecorder.setProfile(profile);
+
+        // Step 4: Set output file
+        mMediaRecorder.setOutputFile(outputPath);
+        // END_INCLUDE (configure_media_recorder)
+
+        // Step 5: Prepare configured MediaRecorder
+        try {
+            mMediaRecorder.prepare();
+        } catch (IllegalStateException e) {
+            Log.d(TAG, "IllegalStateException preparing MediaRecorder: " + e.getMessage());
+            releaseMediaRecorder();
+            return false;
+        } catch (IOException e) {
+            Log.d(TAG, "IOException preparing MediaRecorder: " + e.getMessage());
+            releaseMediaRecorder();
+            return false;
+        }
+        mMediaRecorder.start();
+        isRecording = true;
+        return true;
+    }
+
+    @Override
+    void stopVideoRecord() {
+        if (isRecording) {
+            // stop recording and release camera
+            try {
+                mMediaRecorder.stop();  // stop the recording
+            } catch (RuntimeException e) {
+                // RuntimeException is thrown when stop() is called immediately after start().
+                // In this case the output file is not properly constructed ans should be deleted.
+                Log.d(TAG, "RuntimeException: stop() is called immediately after start()");
+            }
+            isRecording = false;
+            releaseMediaRecorder(); // release the MediaRecorder object
+            mCamera.lock();         // take camera access back from MediaRecorder
+            stop();
+        }
+    }
+
+    private void releaseMediaRecorder() {
+        if (mMediaRecorder != null) {
+            // clear recorder configuration
+            mMediaRecorder.reset();
+            // release the recorder object
+            mMediaRecorder.release();
+            mMediaRecorder = null;
+            // Lock camera for later use i.e taking it back from MediaRecorder.
+            // MediaRecorder doesn't need it anymore and we will release it if the activity pauses.
+            mCamera.lock();
+            isRecording = false;
+        }
     }
 
     // Suppresses Camera#setPreviewTexture
@@ -136,6 +221,9 @@ class Camera1 extends CameraViewImpl {
         if (mFacing == facing) {
             return;
         }
+        if (isRecording()) {
+            return;
+        }
         mFacing = facing;
         if (isCameraOpened()) {
             stop();
@@ -146,6 +234,11 @@ class Camera1 extends CameraViewImpl {
     @Override
     int getFacing() {
         return mFacing;
+    }
+
+    @Override
+    int getCameraId() {
+        return mCameraId;
     }
 
     @Override

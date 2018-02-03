@@ -1,5 +1,6 @@
 package com.pycredit.h5sdk.perm;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -91,12 +92,15 @@ public class PermChecker implements ActivityDelegate {
                 }
             }
             //针对国内厂商处理
-            if (ManufacturerSupportUtil.isUnderMNeedChecked(true)) {//5.x小米、魅族、OPPO等要特殊检查
+            if (PermissionsPageManager.isMEIZU() || PermissionsPageManager.isSMARTISAN()) {//魅族、锤子全版本都要特殊检查
                 if (!CNPermChecker.isPermissionGranted(context, perm)) {
                     return false;
                 }
             }
-            if ((PermissionsPageManager.isMEIZU() || PermissionsPageManager.isSMARTISAN()) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {//6.0以上魅族、锤子手机拒绝的权限用普通API返回有权限,要特殊检查
+            if (ManufacturerSupportUtil.isUnderMNeedChecked(true)) {//5.x小米、OPPO等要特殊检查
+                if (PermissionsPageManager.isOPPO() && Manifest.permission.RECORD_AUDIO.equals(perm)) {//OPPO 5.1录音检查总是失败,所以默认他是成功的
+                    return true;
+                }
                 if (!CNPermChecker.isPermissionGranted(context, perm)) {
                     return false;
                 }

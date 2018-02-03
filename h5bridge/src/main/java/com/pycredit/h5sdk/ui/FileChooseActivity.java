@@ -12,6 +12,8 @@ import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.support.v4.content.FileProvider;
 
+import com.pycredit.h5sdk.capture.CaptureCallback;
+import com.pycredit.h5sdk.capture.CaptureConfig;
 import com.pycredit.h5sdk.perm.PermChecker;
 
 import java.io.File;
@@ -52,7 +54,7 @@ public class FileChooseActivity extends Activity {
     private String acceptType;
     private boolean capture;
 
-    private Uri imageUri;
+    private Uri mediaUri;
 
     private static void setChooseCallback(long callbackKey, FileChooseCallback chooseCallback) {
         FileChooseActivity.callbackMap.put(callbackKey, chooseCallback);
@@ -101,14 +103,29 @@ public class FileChooseActivity extends Activity {
         } else {
             if (acceptType != null) {
                 if (acceptType.contains("image") || acceptType.contains("video")) {
-                    if (PermChecker.hasPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE})) {
-                        startUploadFile(target);
+                    String[] perms = null;
+                    if (acceptType.contains("image")) {
+                        perms = new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE};
+                    }
+                    if (acceptType.contains("video")) {
+                        perms = new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE};
+                    }
+                    if (PermChecker.hasPermissions(this, perms)) {
+                        if (acceptType.contains("video")) {
+                            startUploadVideoFile();
+                        } else {
+                            startUploadFile(target);
+                        }
                     } else {
                         final Intent finalTarget = target;
-                        PermRequestActivity.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}, new PermChecker.RequestPermCallback() {
+                        PermRequestActivity.requestPermissions(this, perms, new PermChecker.RequestPermCallback() {
                             @Override
                             public void onRequestSuccess() {
-                                startUploadFile(finalTarget);
+                                if (acceptType.contains("video")) {
+                                    startUploadVideoFile();
+                                } else {
+                                    startUploadFile(finalTarget);
+                                }
                             }
 
                             @Override
@@ -118,11 +135,12 @@ public class FileChooseActivity extends Activity {
                         });
                     }
                 } else if (acceptType.contains("audio")) {
-                    if (PermChecker.hasPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE})) {
+                    String[] perms = new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE};
+                    if (PermChecker.hasPermissions(this, perms)) {
                         startUploadFile(target);
                     } else {
                         final Intent finalTarget = target;
-                        PermRequestActivity.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE}, new PermChecker.RequestPermCallback() {
+                        PermRequestActivity.requestPermissions(this, perms, new PermChecker.RequestPermCallback() {
                             @Override
                             public void onRequestSuccess() {
                                 startUploadFile(finalTarget);
@@ -157,6 +175,26 @@ public class FileChooseActivity extends Activity {
         }
     }
 
+    /**
+     * 开始拍摄视频
+     */
+    private void startUploadVideoFile() {
+        CaptureConfig captureConfig = new CaptureConfig(true, false, 0);
+        String savePath = generateMediaPath(MediaSourceType.VIDEO);
+        CameraActivity.startCapture(this, captureConfig, savePath, new CaptureCallback() {
+            @Override
+            public void onSuccess(String savePath) {
+                Uri uri = fileToUri(new File(savePath));
+                uploadSuccess(uri);
+            }
+
+            @Override
+            public void onFail(String errCode, String errMsg) {
+                uploadFail();
+            }
+        }, true);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -166,8 +204,8 @@ public class FileChooseActivity extends Activity {
                 if (uri != null) {
                     uploadSuccess(uri);
                 } else {
-                    if (imageUri != null) {
-                        uploadSuccess(imageUri);
+                    if (mediaUri != null) {
+                        uploadSuccess(mediaUri);
                     } else {
                         uploadFail();
                     }
@@ -193,7 +231,7 @@ public class FileChooseActivity extends Activity {
             callbackMap.remove(currentCallbackKey);
         }
         finish();
-        imageUri = null;
+        mediaUri = null;
     }
 
 
@@ -202,7 +240,7 @@ public class FileChooseActivity extends Activity {
             getCurrentCallback().onFail();
             callbackMap.remove(currentCallbackKey);
         }
-        imageUri = null;
+        mediaUri = null;
         finish();
     }
 
@@ -241,12 +279,16 @@ public class FileChooseActivity extends Activity {
      */
     private Intent createCaptureEnableIntent(String acceptType) {
         if (acceptType != null) {
+            MediaSourceType mediaSourceType = null;
             if (acceptType.startsWith("image/*")) {
-                return createCaptureIntent();
+                mediaSourceType = MediaSourceType.IMAGE;
             } else if (acceptType.startsWith("video/*")) {
-                return createCamcorderIntent();
+                mediaSourceType = MediaSourceType.VIDEO;
             } else if (acceptType.startsWith("audio/*")) {
-                return createSoundRecorderIntent();
+                mediaSourceType = MediaSourceType.AUDIO;
+            }
+            if (mediaSourceType != null) {
+                return createMediaIntent(mediaSourceType);
             }
         }
         return null;
@@ -257,56 +299,80 @@ public class FileChooseActivity extends Activity {
      *
      * @return
      */
-    private Intent createCaptureIntent() {
+    private Intent createMediaIntent(MediaSourceType type) {
+        Intent intent = new Intent(type.action);
+        PackageManager packageManager = getPackageManager();
+        if (intent.resolveActivity(packageManager) != null) {
+            String mediaFilePath = generateMediaPath(type);
+            File file = new File(mediaFilePath);
+            mediaUri = fileToUri(file);
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {//如果api大于Android api23
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);//加入flag
+            } else {
+                intent.addCategory(Intent.CATEGORY_DEFAULT);
+            }
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, mediaUri);
+            return intent;
+        }
+        return null;
+    }
+
+    /**
+     * 生成文件路径
+     *
+     * @param mediaSourceType
+     * @return
+     */
+    private String generateMediaPath(MediaSourceType mediaSourceType) {
         File cacheDir = getExternalCacheDir();
         if (cacheDir == null) {
             cacheDir = getCacheDir();
         }
-        String cameraFilePath = cacheDir.getAbsolutePath() + File.separator + "image_" + System.currentTimeMillis();
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        PackageManager packageManager = getPackageManager();
-        if (intent.resolveActivity(packageManager) != null) {
-            File file = new File(cameraFilePath);
-
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {//如果api大于Android api23
-                imageUri = FileProvider.getUriForFile(this, getPackageName() + ".h5sdk.fileprovider", file);//替换获取uri的获取方式
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);//加入flag
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-            } else {
-                intent.addCategory(Intent.CATEGORY_DEFAULT);
-                imageUri = Uri.fromFile(file);
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-            }
-            return intent;
-        }
-        return null;
+        return cacheDir.getAbsolutePath() + File.separator + mediaSourceType.getFileName();
     }
 
     /**
-     * 录视频
+     * File转uri
      *
+     * @param file
      * @return
      */
-    private Intent createCamcorderIntent() {
-        Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-        PackageManager packageManager = getPackageManager();
-        if (intent.resolveActivity(packageManager) != null) {
-            return intent;
+    private Uri fileToUri(File file) {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {//如果api大于Android api23
+            return FileProvider.getUriForFile(this, getPackageName() + ".h5sdk.fileprovider", file);//替换获取uri的获取方式
+        } else {
+            return Uri.fromFile(file);
         }
-        return null;
     }
 
     /**
-     * 录声音
-     *
-     * @return
+     * 媒体源类型
      */
-    private Intent createSoundRecorderIntent() {
-        Intent intent = new Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION);
-        PackageManager packageManager = getPackageManager();
-        if (intent.resolveActivity(packageManager) != null) {
-            return intent;
+    enum MediaSourceType {
+        /**
+         * 照片
+         */
+        IMAGE(MediaStore.ACTION_IMAGE_CAPTURE, ".jpg"),
+        /**
+         * 视频
+         */
+        VIDEO(MediaStore.ACTION_VIDEO_CAPTURE, ".mp4"),
+        /**
+         * 录音
+         */
+        AUDIO(MediaStore.Audio.Media.RECORD_SOUND_ACTION, ".mp3");
+
+        private String action;
+        private String extension;
+
+        MediaSourceType(String action, String extension) {
+            this.action = action;
+            this.extension = extension;
         }
-        return null;
+
+        private String getFileName() {
+            return String.format(name() + "_%s" + extension, System.currentTimeMillis());
+        }
     }
+
 }

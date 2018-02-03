@@ -7,9 +7,13 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v4.app.Fragment;
 import android.text.TextUtils;
 
+import com.pycredit.h5sdk.H5JsHelper;
 import com.pycredit.h5sdk.H5SDKHelper;
 import com.pycredit.h5sdk.capture.Capture;
 import com.pycredit.h5sdk.capture.CaptureCallback;
@@ -43,6 +47,7 @@ import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_NO_CAMERA_PERM;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_PAY_APP_NOT_INSTALL;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_REQUEST_PERM_FAIL;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_UPLOAD_FAIL;
+import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_VIDEO_RECORD_UN_SUPPORT;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.SUCCESS;
 
 /**
@@ -70,10 +75,18 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
     protected PYCreditJs2AppInfo payInfo;
     protected PYCreditJsParser payParser;
     protected JsCallAppCallback payCallback;
+    /**
+     * 检查是否支持视频录制暂存
+     */
+    protected PYCreditJs2AppInfo checkRecordInfo;
+    protected PYCreditJsParser checkRecordParser;
+    protected JsCallAppCallback checkRecordCallback;
 
     protected String cameraFilePath;//拍照图片存放地址
 
     protected Capture capture;
+
+    protected Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public PYCreditJsCallAppProcessor(Activity activity) {
         activityRef = new WeakReference<>(activity);
@@ -416,6 +429,11 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
         if (callback != null) {
             Map<String, Object> successData = new HashMap<>();
             successData.put("version", H5SDKHelper.getSdkVersion());
+            successData.put("manufacturer", Build.MANUFACTURER);
+            successData.put("model", Build.MODEL);
+            successData.put("product", Build.PRODUCT);
+            successData.put("OSVersion", Build.VERSION.RELEASE);
+            successData.put("deviceInfo", Build.MANUFACTURER + "_" + Build.MODEL);
             PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(successData);
             callback.jsCallAppSuccess(js2AppInfo, app2JsInfo, parser);
         }
@@ -449,6 +467,9 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
                 }
                 if (!permList.contains(Manifest.permission.CAMERA)) {
                     permList.add(Manifest.permission.CAMERA);
+                }
+                if (!permList.contains(Manifest.permission.RECORD_AUDIO)) {
+                    permList.add(Manifest.permission.RECORD_AUDIO);
                 }
             }
             if (!permList.isEmpty()) {
@@ -506,6 +527,30 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
                 }
             }
         }
+    }
+
+    /**
+     * 检查是否支持视频录制
+     *
+     * @param js2AppInfo
+     * @param parser
+     * @param callback
+     */
+    @Override
+    public void checkVideoRecording(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback) {
+        checkRecordInfo = js2AppInfo;
+        checkRecordParser = parser;
+        checkRecordCallback = callback;
+        mainHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (H5JsHelper.fileChooserEnable.get()) {
+                    checkRecordSupportResult(true);
+                } else {
+                    checkRecordSupportResult(false);
+                }
+            }
+        }, 1000);
     }
 
     /**
@@ -591,5 +636,29 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
             }
         }
         return true;
+    }
+
+    /**
+     * 检查是否支持录制视频结果
+     *
+     * @param support
+     */
+    private void checkRecordSupportResult(boolean support) {
+        if (checkRecordCallback != null) {
+            if (support) {
+                Map<String, Object> successData = new HashMap<>();
+                successData.put("code", SUCCESS.getCode());
+                successData.put("message", SUCCESS.getMsg());
+                PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(successData);
+                checkRecordCallback.jsCallAppSuccess(checkRecordInfo, app2JsInfo, checkRecordParser);
+            } else {
+                Map<String, Object> errorData = new HashMap<>();
+                errorData.put("code", ERROR_VIDEO_RECORD_UN_SUPPORT.getCode());
+                errorData.put("message", ERROR_VIDEO_RECORD_UN_SUPPORT.getMsg());
+                PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
+                checkRecordCallback.jsCallAppFail(checkRecordInfo, app2JsInfo, checkRecordParser);
+            }
+        }
+
     }
 }

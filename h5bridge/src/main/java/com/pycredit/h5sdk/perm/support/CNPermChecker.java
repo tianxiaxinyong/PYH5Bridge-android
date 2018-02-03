@@ -266,6 +266,7 @@ public class CNPermChecker {
      * @return true if success
      * @throws Exception
      */
+    @SuppressLint("MissingPermission")
     private static boolean checkLocation(Context context) throws Exception {
         granted = false;
         final LocationManager locationManager = (LocationManager) context.getSystemService(Context

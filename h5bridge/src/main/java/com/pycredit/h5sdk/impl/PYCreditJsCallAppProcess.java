@@ -80,4 +80,13 @@ public interface PYCreditJsCallAppProcess extends JsCallAppProcess {
      * @param callback
      */
     void authorization(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback);
+
+    /**
+     * 检查是否支持视频录制
+     *
+     * @param js2AppInfo
+     * @param parser
+     * @param callback
+     */
+    void checkVideoRecording(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback);
 }

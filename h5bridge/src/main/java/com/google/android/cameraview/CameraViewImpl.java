@@ -16,6 +16,8 @@
 
 package com.google.android.cameraview;
 
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.view.View;
 
 import java.util.Set;
@@ -42,11 +44,24 @@ abstract class CameraViewImpl {
 
     abstract void stop();
 
+    boolean startVideoRecord(String outputPath, CamcorderProfile profile, MediaRecorder.OnInfoListener onInfoListener, MediaRecorder.OnErrorListener onErrorListener) {
+        return false;
+    }
+
+    void stopVideoRecord() {
+    }
+
     abstract boolean isCameraOpened();
+
+    boolean isRecording(){
+        return false;
+    }
 
     abstract void setFacing(int facing);
 
     abstract int getFacing();
+
+    abstract int getCameraId();
 
     abstract Set<AspectRatio> getSupportedAspectRatios();
 
