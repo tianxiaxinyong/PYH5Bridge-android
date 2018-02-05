@@ -16,7 +16,7 @@ allprojects {
 
 
 dependencies {
-compile 'com.pycredit.h5sdk:h5bridge:x.x.x'
+    compile 'com.pycredit.h5sdk:h5bridge:x.x.x'
 }
 ```
 
@@ -39,6 +39,7 @@ compile 'com.nostra13.universalimageloader:universal-image-loader:1.9.5'
 ```
 
 **如何使用**  
+参考：[DemoActivity](app/src/main/java/com/pycredit/h5bridge/DemoActivity.java)   
 实例化H5SDKHelper  
 
 ```  
