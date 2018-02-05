@@ -39,7 +39,7 @@ compile 'com.nostra13.universalimageloader:universal-image-loader:1.9.5'
 ```
 
 **如何使用**  
-实例化5SDKHelper  
+实例化H5SDKHelper  
 
 ```  
 h5SDKHelper = new H5SDKHelper(this, mWebView);
