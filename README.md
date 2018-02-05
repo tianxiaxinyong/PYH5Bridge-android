@@ -3,7 +3,6 @@
 **H5Bridge android集成流程**
 
 **集成代码库工程**  
-##### A.远程依赖方式  
 
 ```  
 allprojects {
@@ -14,41 +13,11 @@ allprojects {
         }
     }
 }
+
+
 dependencies {
 compile 'com.pycredit.h5sdk:h5bridge:x.x.x'
 }
-```
-
-##### B.源码集成方式
-1. 将h5bridge代码工程拷贝到商户应用工程根目录；
-2. 在app module下的build.gradle下手动添加依赖，如下代码所示：  
-
-```  
-dependencies {
-    ......
-    compile project(':h5bridge')
-    ......
-}
-```
-
-3. 修改h5bridge module下的build.gradle如下的rootProject.ext.xxx为对应的版本：  
-
-```  
-compileSdkVersion rootProject.ext.compileSdkVersion
-buildToolsVersion rootProject.ext.buildToolsVersion
-minSdkVersion rootProject.ext.minSdkVersion
-targetSdkVersion rootProject.ext.targetSdkVersion
-
-compile 'com.android.support:support-v4:' + rootProject.ext.supportLibraryVersion
-compile 'com.android.support:support-annotations:' + rootProject.ext.supportLibraryVersion
-eg:
-compileSdkVersion 25
-buildToolsVersion 25.0.3
-minSdkVersion 16
-targetSdkVersion 25
-
-compile 'com.android.support:support-v4:25.3.1'
-compile 'com.android.support:support-annotations:25.3.1'
 ```
 
 **依赖的第三方库**  
