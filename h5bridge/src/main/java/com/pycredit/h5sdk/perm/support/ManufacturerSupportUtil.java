@@ -15,8 +15,11 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import static com.pycredit.h5sdk.perm.support.PermissionsPageManager.MANUFACTURER_HUAWEI;
 import static com.pycredit.h5sdk.perm.support.PermissionsPageManager.MANUFACTURER_MEIZU;
 import static com.pycredit.h5sdk.perm.support.PermissionsPageManager.MANUFACTURER_OPPO;
+import static com.pycredit.h5sdk.perm.support.PermissionsPageManager.MANUFACTURER_SMARTISAN;
+import static com.pycredit.h5sdk.perm.support.PermissionsPageManager.MANUFACTURER_VIVO;
 import static com.pycredit.h5sdk.perm.support.PermissionsPageManager.MANUFACTURER_XIAOMI;
 
 
@@ -31,6 +34,33 @@ public class ManufacturerSupportUtil {
             MANUFACTURER_MEIZU.toUpperCase(), MANUFACTURER_OPPO.toUpperCase()};
     private static Set<String> underMSet = new HashSet<>(Arrays.asList
             (underMHasPermissionsRequestManufacturer));
+
+    private static Set<String> upMNeedCNCheckSet = new HashSet<>(
+            Arrays.asList(
+                    new String[]{
+                            MANUFACTURER_MEIZU.toUpperCase(),
+                            MANUFACTURER_SMARTISAN.toUpperCase(),
+                            MANUFACTURER_OPPO.toUpperCase(),
+                            MANUFACTURER_VIVO.toUpperCase()}));
+
+    private static Set<String> underMNeedCNCheckSet = new HashSet<>(
+            Arrays.asList(
+                    new String[]{
+                            MANUFACTURER_MEIZU.toUpperCase(),
+                            MANUFACTURER_SMARTISAN.toUpperCase(),
+                            MANUFACTURER_OPPO.toUpperCase(),
+                            MANUFACTURER_VIVO.toUpperCase(),
+                            MANUFACTURER_XIAOMI.toUpperCase(),
+                            MANUFACTURER_HUAWEI.toUpperCase()}));
+
+    public static boolean upMNeedCNCheck() {
+        return upMNeedCNCheckSet.contains(PermissionsPageManager.getManufacturer().toUpperCase());
+    }
+
+
+    public static boolean underMNeedCNCheck() {
+        return underMNeedCNCheckSet.contains(PermissionsPageManager.getManufacturer().toUpperCase());
+    }
 
     /**
      * those manufacturer that need request by some special measures, above

@@ -92,17 +92,20 @@ public class PermChecker implements ActivityDelegate {
                 }
             }
             //针对国内厂商处理
-            if (PermissionsPageManager.isMEIZU() || PermissionsPageManager.isSMARTISAN()) {//魅族、锤子全版本都要特殊检查
-                if (!CNPermChecker.isPermissionGranted(context, perm)) {
-                    return false;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {//Android 6.0以上的要特殊检查的
+                if (ManufacturerSupportUtil.upMNeedCNCheck()) {
+                    if (!CNPermChecker.isPermissionGranted(context, perm)) {
+                        return false;
+                    }
                 }
-            }
-            if (ManufacturerSupportUtil.isUnderMNeedChecked(true)) {//5.x小米、OPPO等要特殊检查
+            } else {//Android 6.0以下要特殊检查的
                 if (PermissionsPageManager.isOPPO() && Manifest.permission.RECORD_AUDIO.equals(perm)) {//OPPO 5.1录音检查总是失败,所以默认他是成功的
                     return true;
                 }
-                if (!CNPermChecker.isPermissionGranted(context, perm)) {
-                    return false;
+                if (ManufacturerSupportUtil.underMNeedCNCheck()) {
+                    if (!CNPermChecker.isPermissionGranted(context, perm)) {
+                        return false;
+                    }
                 }
             }
         }

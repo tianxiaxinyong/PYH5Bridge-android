@@ -148,7 +148,7 @@ public class CNPermChecker {
     private static boolean checkRecordAudio(Context context) throws Exception {
         AudioRecordManager recordManager = new AudioRecordManager();
 
-        recordManager.startRecord(context.getExternalFilesDir(Environment.DIRECTORY_RINGTONES) + "/" +
+        recordManager.startRecord(context.getCacheDir() + "/" +
                 TAG + ".3gp");
         recordManager.stopRecord();
 
