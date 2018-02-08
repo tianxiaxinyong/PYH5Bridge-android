@@ -99,8 +99,10 @@ public class PermChecker implements ActivityDelegate {
                     }
                 }
             } else {//Android 6.0以下要特殊检查的
-                if (PermissionsPageManager.isOPPO() && Manifest.permission.RECORD_AUDIO.equals(perm)) {//OPPO 5.1录音检查总是失败,所以默认他是成功的
-                    return true;
+                if (PermissionsPageManager.isOPPO() && Manifest.permission.RECORD_AUDIO.equals(perm)) {//OPPO A59m 、R9m  5.1录音检查总是失败,所以默认他是成功的
+                    if (PermissionsPageManager.getColorOsVersion().isEqual("3.0") || PermissionsPageManager.getColorOsVersion().isHigherThan("3.0")) {//A59m 、R9m ColorOs为3.0.0以上
+                        return true;
+                    }
                 }
                 if (ManufacturerSupportUtil.underMNeedCNCheck()) {
                     if (!CNPermChecker.isPermissionGranted(context, perm)) {

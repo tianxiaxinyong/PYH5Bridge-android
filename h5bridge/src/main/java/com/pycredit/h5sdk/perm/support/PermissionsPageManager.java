@@ -13,6 +13,7 @@ import com.pycredit.h5sdk.perm.support.manufacturer.Protogenesis;
 import com.pycredit.h5sdk.perm.support.manufacturer.Samsung;
 import com.pycredit.h5sdk.perm.support.manufacturer.VIVO;
 import com.pycredit.h5sdk.perm.support.manufacturer.XIAOMI;
+import com.pycredit.h5sdk.perm.support.manufacturer.ZTE;
 
 
 /**
@@ -32,6 +33,7 @@ public class PermissionsPageManager {
     static final String MANUFACTURER_MEIZU = "meizu";
     static final String MANUFACTURER_SMARTISAN = "smartisan";
     static final String MANUFACTURER_SAMSUNG = "samsung";
+    static final String MANUFACTURER_ZTE = "ZTE";
     static final String manufacturer = Build.MANUFACTURER;
 
     public static String getManufacturer() {
@@ -53,6 +55,8 @@ public class PermissionsPageManager {
                 permissionsPage = new MEIZU(activity);
             } else if (MANUFACTURER_SAMSUNG.equalsIgnoreCase(manufacturer)) {
                 permissionsPage = new Samsung(activity);
+            } else if (MANUFACTURER_ZTE.equalsIgnoreCase(manufacturer)) {
+                permissionsPage = new ZTE(activity);
             }
 
             return permissionsPage.settingIntent();
@@ -73,6 +77,16 @@ public class PermissionsPageManager {
 
     public static boolean isOPPO() {
         return getManufacturer().equalsIgnoreCase(MANUFACTURER_OPPO);
+    }
+
+    public static Version getColorOsVersion() {
+        if (isOPPO()) {
+            String version = OPPO.getColorOsVersion();
+            if (version != null && version.length() > 0) {
+                return new Version(version.substring(1));
+            }
+        }
+        return null;
     }
 
     public static boolean isVIVO() {

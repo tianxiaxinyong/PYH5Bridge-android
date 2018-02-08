@@ -188,6 +188,10 @@ public class CameraActivity extends Activity {
         ivBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (cameraView.isRecordering()) {
+                    stopRecord();
+                    return;
+                }
                 finish();
             }
         });
@@ -218,11 +222,7 @@ public class CameraActivity extends Activity {
                             cmTimer.start();
                             ivCapture.setImageResource(R.drawable.ic_stop);
                         } else {
-                            cameraView.stopVideoRecord();
-                            cmTimer.stop();
-                            cmTimer.setVisibility(View.GONE);
-                            ivCapture.setVisibility(View.GONE);
-                            rlDone.setVisibility(View.VISIBLE);
+                            stopRecord();
                         }
                     } else {
                         cameraView.takePicture();
@@ -367,6 +367,24 @@ public class CameraActivity extends Activity {
             e.printStackTrace();
         }
         finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (cameraView.isRecordering()) {
+            stopRecord();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+
+    private void stopRecord() {
+        cameraView.stopVideoRecord();
+        cmTimer.stop();
+        cmTimer.setVisibility(View.GONE);
+        ivCapture.setVisibility(View.GONE);
+        rlDone.setVisibility(View.VISIBLE);
     }
 
     @Override

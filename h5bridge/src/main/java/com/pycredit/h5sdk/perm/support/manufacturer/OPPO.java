@@ -65,7 +65,7 @@ public class OPPO implements PermissionsPage {
         return null;
     }
 
-    private static String getColorOsVersion() {
+    public static String getColorOsVersion() {
         return ManufacturerSupportUtil.getSystemProperty("ro.build.version.opporom");
     }
 }

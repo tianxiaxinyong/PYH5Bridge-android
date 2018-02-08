@@ -109,8 +109,8 @@ class Camera1 extends CameraViewImpl {
             mCamera.stopPreview();
         }
         mShowingPreview = false;
-        releaseCamera();
         releaseMediaRecorder();
+        releaseCamera();
     }
 
     @Override
@@ -134,7 +134,6 @@ class Camera1 extends CameraViewImpl {
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
         mMediaRecorder.setOrientationHint(calcCameraRotation(mDisplayOrientation));
         // Step 3: Set a CamcorderProfile (requires API Level 8 or higher)
-        Log.d(TAG, "startVideoRecorder: profile = "+profile);
         mMediaRecorder.setProfile(profile);
 
         // Step 4: Set output file

@@ -233,6 +233,7 @@ class Camera2 extends CameraViewImpl {
             mCaptureSession.close();
             mCaptureSession = null;
         }
+        releaseMediaRecorder();
         if (mCamera != null) {
             mCamera.close();
             mCamera = null;
@@ -241,7 +242,6 @@ class Camera2 extends CameraViewImpl {
             mImageReader.close();
             mImageReader = null;
         }
-        releaseMediaRecorder();
     }
 
     @Override
