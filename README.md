@@ -46,6 +46,13 @@ compile 'com.nostra13.universalimageloader:universal-image-loader:1.9.5'
 h5SDKHelper = new H5SDKHelper(this, mWebView);
 ```
 
+> 注意：WebView所在页面Activity需要配置成竖屏  
+
+```  
+android:screenOrientation="portrait"
+```
+
+
 2、WebView所在的Activity/Fragment生命周期中调用H5SDKHelper对应的生命周期方法  
 
 ```  
@@ -79,7 +86,7 @@ public void onBackPressed() {
 }
 ```
 
-> 注意：有可能会遇到按返回一直在重复加载第一个页面这种情况建议在页面合适的地方加一个直接关闭页面按钮直接finish掉页面，eg:右上角加个关闭menu  
+> 注意：有可能会遇到按返回一直在重复加载第一个页面这种情况，建议在页面合适的地方加一个直接关闭页面的按钮。（比如:在页面右上角加个关闭menu）  
 
 
 4、处理网页面重定向,主要是为了处理点击网页中的电话号码调起拔打电话页面，还有调起微信、支付宝处理  
@@ -148,12 +155,6 @@ h5SDKHelper.setBanner("https://apk-txxy.oss-cn-shenzhen.aliyuncs.com/test_ad.png
         Toast.makeText(getApplicationContext(), "广告被点击了", Toast.LENGTH_SHORT).show();
     }
 });
-```
-
-> 注意：WebView所在页面Activity需要配置成竖屏  
-
-```  
-android:screenOrientation="portrait"
 ```
 
 **当前支持android系统版本**
