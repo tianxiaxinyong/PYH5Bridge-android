@@ -104,7 +104,7 @@ public boolean shouldOverrideUrlLoading(WebView view, String url) {
 public void openFileChooser(ValueCallback<Uri> uploadFile, String acceptType, String capture) {
     h5SDKHelper.openFileChooser(uploadFile, acceptType, capture);
 }
- //Android 5.0 以上 必须重写此方法
+ //Android 5.0及5.0以上 必须重写此方法
 @Override
 public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
     if (h5SDKHelper.onShowFileChooser(webView, filePathCallback, fileChooserParams)) {
@@ -124,7 +124,7 @@ public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermiss
 }
 ```
 
-6、处理5.0以上WebView录视频、录音权限请求
+6、处理5.0及5.0以上WebView录视频、录音权限请求
 重写WebChromeClient的onPermissionRequest  
 
 ```
