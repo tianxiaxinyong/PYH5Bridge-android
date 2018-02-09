@@ -155,7 +155,7 @@ h5SDKHelper.setBanner("https://apk-txxy.oss-cn-shenzhen.aliyuncs.com/test_ad.png
 ```
 
 **当前支持android系统版本**
-1. 当前支付android 4.1(API 16)及以上系统版本；
+1. 当前支持android 4.1(API 16)及以上系统版本；
 2. android 4.4.4系统不支持调起微信支付
 
 
