@@ -1,15 +1,15 @@
 [ ![Download](https://api.bintray.com/packages/tianxiaxinyong/maven/PYH5Bridge/images/download.svg?version=1.1.3) ](https://bintray.com/tianxiaxinyong/maven/PYH5Bridge/1.1.3/link)
 
-**H5Bridge android集成流程**
+**H5Bridge android集成与使用流程**
 
-**集成代码库工程**  
+一、**集成SDK**  
 
 ```  
 allprojects {
     repositories {
         jcenter()
         maven {
-             url "https://jitpack.io"
+             url "https://jitpack.io" //引用PhotoView用到
         }
     }
 }
@@ -20,10 +20,10 @@ dependencies {
 }
 ```
 
-**依赖的第三方库**  
+>SDK中引用的第三方库说明  
 
 ```  
-//七牛云存储，上专照片时用到
+//七牛云存储，上传照片时用到
 compile 'com.qiniu:qiniu-android-sdk:7.3.10'
 //预览控件，预览照片时用到
 compile 'com.github.chrisbanes:PhotoView:2.0.0'
@@ -31,22 +31,22 @@ compile 'com.github.chrisbanes:PhotoView:2.0.0'
 compile 'com.nostra13.universalimageloader:universal-image-loader:1.9.5'
 ```
 
-**混淆**  
+>混淆  
 
 ```  
 -keep class com.pycredit.h5sdk.** { *; }
 -keep class com.google.android.cameraview.** { *; }
 ```
 
-**如何使用**  
-参考：[DemoActivity](app/src/main/java/com/pycredit/h5bridge/DemoActivity.java)   
-实例化H5SDKHelper  
+二、**如何使用**（可参考：[DemoActivity](app/src/main/java/com/pycredit/h5bridge/DemoActivity.java))  
+   
+1、实例化H5SDKHelper  
 
 ```  
 h5SDKHelper = new H5SDKHelper(this, mWebView);
 ```
 
-1、WebView所在的Activity/Fragment生命周期中调用H5SDKHelper对应的生命周期方法  
+2、WebView所在的Activity/Fragment生命周期中调用H5SDKHelper对应的生命周期方法  
 
 ```  
 @Override
@@ -67,7 +67,7 @@ protected void onDestroy() {
     super.onDestroy();
 }
 ```
-2、处理返回按钮逻辑，H5SDKHelper优先处理返回，用于实现页面回退  
+3、处理返回按钮逻辑，H5SDKHelper优先处理返回，用于实现页面回退  
 
 ```  
 @Override
@@ -82,7 +82,7 @@ public void onBackPressed() {
 > 注意：有可能会遇到按返回一直在重复加载第一个页面这种情况建议在页面合适的地方加一个直接关闭页面按钮直接finish掉页面，eg:右上角加个关闭menu  
 
 
-3、处理网页面重定向,主要是为了处理点击网页中的电话号码调起拔打电话页面，还有调起微信、支付宝处理  
+4、处理网页面重定向,主要是为了处理点击网页中的电话号码调起拔打电话页面，还有调起微信、支付宝处理  
 在WebViewClient的shouldOverrideUrlLoading方法中加上下面代码：  
 
 ```  
@@ -96,7 +96,7 @@ public boolean shouldOverrideUrlLoading(WebView view, String url) {
 
 ```
 
-4、处理上传文件功能（重要）  
+5、处理上传文件功能（重要）  
 重写WebChromeClient的onShowFileChooser、openFileChooser方法  
 
 ```  
@@ -114,7 +114,7 @@ public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathC
 }
 ```
 
-5、处理地理位置请求  
+6、处理地理位置请求  
 重写WebChromeClient的onGeolocationPermissionsShowPrompt  
 
 ```  
@@ -124,7 +124,7 @@ public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermiss
 }
 ```
 
-6、处理5.0及5.0以上WebView录视频、录音权限请求
+7、处理5.0及5.0以上WebView录视频、录音权限请求
 重写WebChromeClient的onPermissionRequest  
 
 ```
@@ -134,10 +134,10 @@ public void onPermissionRequest(PermissionRequest request) {
 }
 ```
 
-> 如果你的WebView没有别的特殊处理，上面的3、4、5、6步可以直接使用h5SDKHelper.initDefaultSettings(),或者分别使用DefaultWebViewClient,DefaultWebChromeClient
+> 如果你的WebView没有别的特殊处理，上面的4、5、6、7步可以直接使用h5SDKHelper.initDefaultSettings(),或者分别使用DefaultWebViewClient,DefaultWebChromeClient，详情参考[DemoActivity](app/src/main/java/com/pycredit/h5bridge/DemoActivity.java)  
 
 
-7、添加广告（可选）  
+8、添加广告（可选）  
 
 ```  
 //如果需要在H5页面插入广告，使用如下方式，传入广告图片地址及回调

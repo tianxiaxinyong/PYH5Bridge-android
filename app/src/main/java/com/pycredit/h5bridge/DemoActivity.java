@@ -96,7 +96,6 @@ public class DemoActivity extends AppCompatActivity {
                 Toast.makeText(getApplicationContext(), "广告被点击了", Toast.LENGTH_SHORT).show();
             }
         });
-        h5SDKHelper.setCapture(new CustomCaptureImpl());
         mWebView.loadUrl("**使用鹏元提供的渠道**");
     }
 
