@@ -2,5 +2,5 @@ ext {
     //是否要发布到maven
     releaseMaven = false
     //发布版本，snapshots 版本使用格式 1.0.0-SNAPSHOT
-    releaseVersion = '1.1.2'
+    releaseVersion = '1.1.3'
 }
