@@ -16,20 +16,17 @@ allprojects {
 
 
 dependencies {
-    compile 'com.pycredit.h5sdk:h5bridge:x.x.x'
+    compile 'com.pycredit.h5sdk:h5bridge:x.x.x' //x.x.x为SDK版本号,如:1.1.3
 }
 ```
 
 >SDK中引用的第三方库说明  
 
-```  
-//七牛云存储，上传照片时用到
-compile 'com.qiniu:qiniu-android-sdk:7.3.10'
-//预览控件，预览照片时用到
-compile 'com.github.chrisbanes:PhotoView:2.0.0'
-//图片缓存，预览照片时用到
-compile 'com.nostra13.universalimageloader:universal-image-loader:1.9.5'
-```
+[qiniu-android-sdk](https://github.com/qiniu/android-sdk)七牛云存储，上传照片时用到    
+
+[PhotoView](https://github.com/chrisbanes/PhotoView)预览控件，预览照片时用到  
+
+[universal-image-loader](https://github.com/nostra13/Android-Universal-Image-Loader)图片缓存，预览照片时用到  
 
 >混淆  
 
