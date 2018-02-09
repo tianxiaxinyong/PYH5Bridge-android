@@ -68,7 +68,7 @@ public class DemoActivity extends AppCompatActivity {
                 h5SDKHelper.openFileChooser(uploadFile, acceptType, capture);
             }
 
-            //Android 5.0 以上 必须重写此方法
+            //Android 5.0及5.0以上 必须重写此方法
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
                 if (h5SDKHelper.onShowFileChooser(webView, filePathCallback, fileChooserParams)) {
