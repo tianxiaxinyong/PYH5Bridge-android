@@ -20,4 +20,13 @@ public interface JsCallAppCallback {
      * @param app2JsInfo
      */
     void jsCallAppFail(Js2AppInfo js2AppInfo, App2JsInfo app2JsInfo, JsParser encoder);
+
+    /**
+     * 调用进度
+     *
+     * @param js2AppInfo
+     * @param app2JsInfo
+     * @param encoder
+     */
+    void jsCallAppProgress(Js2AppInfo js2AppInfo, App2JsInfo app2JsInfo, JsParser encoder);
 }

@@ -27,9 +27,9 @@ dependencies {
     provided fileTree(includes: ['*.jar'], dir: 'providedLibs')
     compile 'com.android.support:support-v4:' + rootProject.ext.supportLibraryVersion
     compile 'com.android.support:support-annotations:' + rootProject.ext.supportLibraryVersion
-    compile 'com.qiniu:qiniu-android-sdk:7.3.10'
     compile 'com.github.chrisbanes:PhotoView:2.0.0'
     compile 'com.nostra13.universalimageloader:universal-image-loader:1.9.5'
+    compile 'com.squareup.okhttp3:okhttp:3.8.1'
 }
 
 apply from: rootProject.projectDir.absolutePath + "/bintray-release.gradle"

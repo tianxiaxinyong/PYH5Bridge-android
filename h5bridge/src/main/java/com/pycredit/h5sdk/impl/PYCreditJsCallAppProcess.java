@@ -28,15 +28,6 @@ public interface PYCreditJsCallAppProcess extends JsCallAppProcess {
     void previewImage(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback);
 
     /**
-     * 图片上传
-     *
-     * @param js2AppInfo
-     * @param parser
-     * @param callback
-     */
-    void uploadImage(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback);
-
-    /**
      * 拉起 App
      *
      * @param js2AppInfo
@@ -89,4 +80,13 @@ public interface PYCreditJsCallAppProcess extends JsCallAppProcess {
      * @param callback
      */
     void checkVideoRecording(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback);
+
+    /**
+     * 代理网络请求
+     *
+     * @param js2AppInfo
+     * @param parser
+     * @param callback
+     */
+    void request(PYCreditJs2AppInfo js2AppInfo, PYCreditJsParser parser, JsCallAppCallback callback);
 }

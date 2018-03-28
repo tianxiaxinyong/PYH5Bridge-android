@@ -17,7 +17,9 @@ public enum JsCallAppErrorCode {
     ERROR_NO_BANNER("error_6001", "没有广告"),
     ERROR_GET_SDK_VERSION_FAIL("error_7001", "获取SDK信息失败"),
     ERROR_REQUEST_PERM_FAIL("error_8001", "授权失败"),
-    ERROR_VIDEO_RECORD_UN_SUPPORT("error_9001", "系统不支持视频录制");
+    ERROR_VIDEO_RECORD_UN_SUPPORT("error_9001", "系统不支持视频录制"),
+    ERROR_NO_NETWORK("error_10001", "客户端网络错误"),
+    ERROR_TIMEOUT("error_10002", "请求超时");
 
     private String code;
     private String msg;

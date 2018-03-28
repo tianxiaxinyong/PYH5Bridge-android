@@ -15,6 +15,7 @@ import android.support.v4.content.FileProvider;
 import com.pycredit.h5sdk.capture.CaptureCallback;
 import com.pycredit.h5sdk.capture.CaptureConfig;
 import com.pycredit.h5sdk.perm.PermChecker;
+import com.pycredit.h5sdk.utils.DeviceUtils;
 
 import java.io.File;
 import java.util.HashMap;
@@ -324,10 +325,7 @@ public class FileChooseActivity extends Activity {
      * @return
      */
     private String generateMediaPath(MediaSourceType mediaSourceType) {
-        File cacheDir = getExternalCacheDir();
-        if (cacheDir == null) {
-            cacheDir = getCacheDir();
-        }
+        File cacheDir = DeviceUtils.getCacheDir(this);
         return cacheDir.getAbsolutePath() + File.separator + mediaSourceType.getFileName();
     }
 

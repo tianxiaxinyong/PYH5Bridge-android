@@ -83,6 +83,23 @@ public abstract class BaseBridge<T extends JsCallAppProcess> implements JsCallAp
     }
 
     /**
+     * 调用进度
+     *
+     * @param js2AppInfo
+     * @param app2JsInfo
+     * @param encoder
+     */
+    @Override
+    public void jsCallAppProgress(Js2AppInfo js2AppInfo, App2JsInfo app2JsInfo, JsParser encoder) {
+        if (encoder != null) {
+            String jsCode = encoder.encode(JsParser.TYPE_PROGRESS, js2AppInfo, app2JsInfo);
+            if (jsCode != null) {
+                appBackJs(jsCode);
+            }
+        }
+    }
+
+    /**
      * APP回应JS调用
      *
      * @param jsCode

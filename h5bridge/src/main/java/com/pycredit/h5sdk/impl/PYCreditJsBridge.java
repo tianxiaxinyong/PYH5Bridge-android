@@ -56,23 +56,6 @@ public class PYCreditJsBridge<T extends PYCreditJsCallAppProcess> extends BaseBr
     }
 
     /**
-     * 图片上传
-     *
-     * @param params
-     */
-    @JavascriptInterface
-    public void uploadImage(String params) {
-        runOnUiThread(new JsCallAppRunner<PYCreditJsCallAppProcess>(getJsCallAppProcess(), params, this) {
-            @Override
-            public void run() {
-                if (process != null) {
-                    process.uploadImage(parser.decode(params), parser, callback);
-                }
-            }
-        });
-    }
-
-    /**
      * 拉起 App
      *
      * @param params
@@ -169,6 +152,23 @@ public class PYCreditJsBridge<T extends PYCreditJsCallAppProcess> extends BaseBr
             public void run() {
                 if (process != null) {
                     process.checkVideoRecording(parser.decode(params), parser, callback);
+                }
+            }
+        });
+    }
+
+    /**
+     * 代理网络请求
+     *
+     * @param params
+     */
+    @JavascriptInterface
+    public void request(String params) {
+        runOnUiThread(new JsCallAppRunner<PYCreditJsCallAppProcess>(getJsCallAppProcess(), params, this) {
+            @Override
+            public void run() {
+                if (process != null) {
+                    process.request(parser.decode(params), parser, callback);
                 }
             }
         });

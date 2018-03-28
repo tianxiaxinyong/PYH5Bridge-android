@@ -18,11 +18,15 @@ public class PYCreditJs2AppInfo extends Js2AppInfo {
 
     private static final String JS_ERROR_CALLBACK_FLAG = "error";
 
+    private static final String JS_PROGRESS_CALLBACK_FLAG = "progress";
+
     private static final String JS_ARGS_DATA_FLAG = "data";
 
     private String successName = "";
 
     private String errorName = "";
+
+    private String progressName = "";
 
     private String dataParam = "";
 
@@ -40,6 +44,9 @@ public class PYCreditJs2AppInfo extends Js2AppInfo {
             if (argsObj != null && argsObj.length() > 0) {
                 if (argsObj.opt(JS_ARGS_DATA_FLAG) instanceof JSONObject) {
                     dataObj = argsObj.optJSONObject(JS_ARGS_DATA_FLAG);
+                    if (dataObj != null) {
+                        progressName = dataObj.optString(JS_PROGRESS_CALLBACK_FLAG);
+                    }
                 } else if (argsObj.opt(JS_ARGS_DATA_FLAG) instanceof JSONArray) {
                     dataArray = argsObj.optJSONArray(JS_ARGS_DATA_FLAG);
                 }
@@ -58,6 +65,10 @@ public class PYCreditJs2AppInfo extends Js2AppInfo {
 
     public String getErrorName() {
         return errorName;
+    }
+
+    public String getProgressName() {
+        return progressName;
     }
 
     public String getDataParam() {

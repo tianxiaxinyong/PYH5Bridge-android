@@ -206,17 +206,22 @@ public class CameraActivity extends Activity {
                             if (camcorderProfile == null) {
                                 return;
                             }
-                            cameraView.startVideoRecord(savePath, camcorderProfile, new MediaRecorder.OnInfoListener() {
-                                @Override
-                                public void onInfo(MediaRecorder mr, int what, int extra) {
+                            try {
+                                cameraView.startVideoRecord(savePath, camcorderProfile, new MediaRecorder.OnInfoListener() {
+                                    @Override
+                                    public void onInfo(MediaRecorder mr, int what, int extra) {
 
-                                }
-                            }, new MediaRecorder.OnErrorListener() {
-                                @Override
-                                public void onError(MediaRecorder mr, int what, int extra) {
-                                    captureFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE);
-                                }
-                            });
+                                    }
+                                }, new MediaRecorder.OnErrorListener() {
+                                    @Override
+                                    public void onError(MediaRecorder mr, int what, int extra) {
+                                        captureFail(JsCallAppErrorCode.ERROR_IMAGE_HANDLE);
+                                    }
+                                });
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                stopRecord();
+                            }
                             cmTimer.setVisibility(View.VISIBLE);
                             cmTimer.setBase(SystemClock.elapsedRealtime());
                             cmTimer.start();

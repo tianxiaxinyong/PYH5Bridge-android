@@ -16,17 +16,17 @@ allprojects {
 
 
 dependencies {
-    compile 'com.pycredit.h5sdk:h5bridge:x.x.x' //x.x.x为SDK版本号,如:1.1.3
+    compile 'com.pycredit.h5sdk:h5bridge:x.x.x' //x.x.x为SDK版本号,如:1.1.4
 }
 ```
 
 >SDK中引用的第三方库说明  
 
-[qiniu-android-sdk](https://github.com/qiniu/android-sdk)七牛云存储，上传照片时用到    
-
 [PhotoView](https://github.com/chrisbanes/PhotoView)预览控件，预览照片时用到  
 
 [universal-image-loader](https://github.com/nostra13/Android-Universal-Image-Loader)图片缓存，预览照片时用到  
+
+[okhttp3](https://github.com/square/okhttp)网络请求用到    
 
 >混淆  
 
@@ -35,7 +35,12 @@ dependencies {
 -keep class com.google.android.cameraview.** { *; }
 ```
 
-二、**如何使用**（可参考：[DemoActivity](app/src/main/java/com/pycredit/h5bridge/DemoActivity.java))  
+二、**如何使用**  
+#####  A.最简用法（可参考：[DefaultDemoActivity](app/src/main/java/com/pycredit/h5bridge/DefaultDemoActivity.java)）  
+
+如果不需要对WebView有任何特殊处理，只用一个页面展示报告，则可以使用[DefaultWebFragment](h5bridge/src/main/java/com/pycredit/h5sdk/ui/DefaultWebFragment.java)  
+
+#####  B.自定义用法（可参考：[DemoActivity](app/src/main/java/com/pycredit/h5bridge/DemoActivity.java))  
    
 1、实例化H5SDKHelper  
 

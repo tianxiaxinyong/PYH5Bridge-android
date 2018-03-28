@@ -5,6 +5,9 @@ package com.pycredit.h5sdk.js;
  */
 
 public interface JsParser<T extends Js2AppInfo, R extends App2JsInfo> {
+
+    int TYPE_PROGRESS = 1;
+
     /**
      * 将String解析成Js2AppInfo
      *
@@ -22,4 +25,14 @@ public interface JsParser<T extends Js2AppInfo, R extends App2JsInfo> {
      * @return
      */
     String encode(boolean success, T js2AppInfo, R app2JsInfo);
+
+    /**
+     * 将App2JsInfo封装成String
+     *
+     * @param type
+     * @param js2AppInfo
+     * @param app2JsInfo
+     * @return
+     */
+    String encode(int type, T js2AppInfo, R app2JsInfo);
 }

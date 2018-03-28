@@ -143,6 +143,8 @@ class Camera1 extends CameraViewImpl {
         // Step 5: Prepare configured MediaRecorder
         try {
             mMediaRecorder.prepare();
+            mMediaRecorder.start();
+            isRecording = true;
         } catch (IllegalStateException e) {
             Log.d(TAG, "IllegalStateException preparing MediaRecorder: " + e.getMessage());
             releaseMediaRecorder();
@@ -152,8 +154,6 @@ class Camera1 extends CameraViewImpl {
             releaseMediaRecorder();
             return false;
         }
-        mMediaRecorder.start();
-        isRecording = true;
         return true;
     }
 

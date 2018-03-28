@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.v4.app.Fragment;
 import android.text.TextUtils;
+import android.webkit.MimeTypeMap;
 
 import com.pycredit.h5sdk.H5JsHelper;
 import com.pycredit.h5sdk.H5SDKHelper;
@@ -24,29 +25,44 @@ import com.pycredit.h5sdk.perm.PermChecker;
 import com.pycredit.h5sdk.ui.PermRequestActivity;
 import com.pycredit.h5sdk.ui.PhotoPreviewActivity;
 import com.pycredit.h5sdk.ui.WebActivity;
+import com.pycredit.h5sdk.utils.DeviceUtils;
 import com.pycredit.h5sdk.utils.EncodeUtils;
 import com.pycredit.h5sdk.utils.ImageUtils;
-import com.pycredit.h5sdk.utils.UploadUtils;
-import com.qiniu.android.http.ResponseInfo;
-import com.qiniu.android.storage.UpCompletionHandler;
-import com.qiniu.android.storage.UploadOptions;
+import com.pycredit.h5sdk.utils.ProgressRequestBody;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_IMAGE_HANDLE;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_NO_BANNER;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_NO_BANNER_URL;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_NO_CAMERA_PERM;
+import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_NO_NETWORK;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_PAY_APP_NOT_INSTALL;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_REQUEST_PERM_FAIL;
-import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_UPLOAD_FAIL;
+import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_TIMEOUT;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.ERROR_VIDEO_RECORD_UN_SUPPORT;
 import static com.pycredit.h5sdk.js.JsCallAppErrorCode.SUCCESS;
 
@@ -212,63 +228,6 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
                     errorData.put("message", "APP页面不存在");
                     PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
                     callback.jsCallAppFail(js2AppInfo, app2JsInfo, parser);
-                }
-                return;
-            }
-        }
-        if (callback != null) {
-            Map<String, Object> errorData = new HashMap<>();
-            errorData.put("code", "-1");
-            errorData.put("message", "H5参数错误");
-            PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
-            callback.jsCallAppFail(js2AppInfo, app2JsInfo, parser);
-        }
-    }
-
-    /**
-     * 图片上传
-     *
-     * @param js2AppInfo
-     * @param parser
-     * @param callback
-     */
-    @Override
-    public void uploadImage(final PYCreditJs2AppInfo js2AppInfo, final PYCreditJsParser parser, final JsCallAppCallback callback) {
-        JSONObject dataObj = js2AppInfo.getDataObj();
-        if (dataObj != null) {
-            int width = dataObj.optInt("width", Integer.MAX_VALUE);
-            int height = dataObj.optInt("height", Integer.MAX_VALUE);
-            String token = dataObj.optString("token");
-            String key = dataObj.optString("key");
-            String file = dataObj.optString("file");
-            if (!TextUtils.isEmpty(token) && !TextUtils.isEmpty(key) && !TextUtils.isEmpty(file)) {
-                Bitmap bitmap = ImageUtils.getBitmap(file, width, height);
-                if (bitmap != null) {
-                    UploadUtils.getUploadManager().put(ImageUtils.bitmap2Bytes(bitmap, Bitmap.CompressFormat.JPEG), key, token, new UpCompletionHandler() {
-                        @Override
-                        public void complete(String s, ResponseInfo responseInfo, JSONObject jsonObject) {
-                            if (callback != null) {
-                                if (responseInfo.isOK()) {
-                                    PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(jsonObject.toString());
-                                    callback.jsCallAppSuccess(js2AppInfo, app2JsInfo, parser);
-                                } else {
-                                    Map<String, Object> errorData = new HashMap<>();
-                                    errorData.put("code", ERROR_UPLOAD_FAIL.getCode());
-                                    errorData.put("message", ERROR_UPLOAD_FAIL.getMsg());
-                                    PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
-                                    callback.jsCallAppFail(js2AppInfo, app2JsInfo, parser);
-                                }
-                            }
-                        }
-                    }, new UploadOptions(null, null, false, null, null, null));
-                } else {
-                    if (callback != null) {
-                        Map<String, Object> errorData = new HashMap<>();
-                        errorData.put("code", "-1");
-                        errorData.put("message", "本地图片不存在");
-                        PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
-                        callback.jsCallAppFail(js2AppInfo, app2JsInfo, parser);
-                    }
                 }
                 return;
             }
@@ -554,15 +513,165 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
     }
 
     /**
+     * 代理网络请求
+     *
+     * @param js2AppInfo
+     * @param parser
+     * @param callback
+     */
+    @Override
+    public void request(final PYCreditJs2AppInfo js2AppInfo, final PYCreditJsParser parser, final JsCallAppCallback callback) {
+        JSONObject dataObj = js2AppInfo.getDataObj();
+        if (dataObj != null) {
+            String url = dataObj.optString("url");
+            String method = dataObj.optString("method");
+            JSONObject headers = dataObj.optJSONObject("headers");
+            int timeout = dataObj.optInt("timeout");
+            JSONObject postParms = dataObj.optJSONObject("data");
+            String postString = null;
+            if (postParms == null) {//请求体没有参数取字符串直接发送
+                postString = dataObj.optString("data");
+            }
+            JSONArray files = dataObj.optJSONArray("files");
+            if (TextUtils.isEmpty(url) || TextUtils.isEmpty(method)) {
+                Map<String, Object> errorData = new HashMap<>();
+                errorData.put("code", "-1");
+                errorData.put("message", "H5参数错误");
+                PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
+                callback.jsCallAppFail(js2AppInfo, app2JsInfo, parser);
+                return;
+            }
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .connectTimeout(timeout, TimeUnit.MILLISECONDS)
+                    .readTimeout(timeout, TimeUnit.MILLISECONDS)
+                    .writeTimeout(timeout, TimeUnit.MILLISECONDS)
+                    .build();
+            Request.Builder requestBuilder = new Request.Builder();
+            requestBuilder.url(url);
+            if (headers != null) {//请求头
+                Iterator<String> keys = headers.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    String value = headers.optString(key);
+                    requestBuilder.addHeader(key, value);
+                }
+            }
+            if ("GET".equalsIgnoreCase(method)) {
+                requestBuilder.get();
+            } else if ("HEAD".equals(method)) {
+                requestBuilder.head();
+            } else if ("POST".equals(method)) {
+                RequestBody requestBody;
+                if (!TextUtils.isEmpty(postString)) {//请求体为字符串
+                    String mimeType = "text/plain";
+                    if (headers != null) {
+                        String contentType = headers.optString("Content-Type");
+                        if (!TextUtils.isEmpty(contentType)) {
+                            mimeType = contentType;
+                        }
+                    }
+                    requestBody = RequestBody.create(MediaType.parse(mimeType), postString);
+                } else {
+                    MultipartBody.Builder bodyBuilder = new MultipartBody.Builder();
+                    bodyBuilder.setType(MultipartBody.FORM);
+                    if (postParms != null) {//表单参数
+                        Iterator<String> keys = postParms.keys();
+                        while (keys.hasNext()) {
+                            String key = keys.next();
+                            String value = postParms.optString(key);
+                            bodyBuilder.addFormDataPart(key, value);
+                        }
+                    }
+                    if (files != null && files.length() > 0) {//文件
+                        for (int i = 0; i < files.length(); i++) {
+                            JSONObject fileObj = files.optJSONObject(i);
+                            if (fileObj != null) {
+                                String keyName = fileObj.optString("dataKey");
+                                String filePath = fileObj.optString("localId");
+                                File file = new File(filePath);
+                                if (file.exists()) {
+                                    String ext = MimeTypeMap.getFileExtensionFromUrl(filePath);
+                                    String mimeType = "image/jpeg";
+                                    if (!TextUtils.isEmpty(ext)) {
+                                        mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+                                        if (TextUtils.isEmpty(mimeType)) {
+                                            mimeType = "image/jpeg";
+                                        }
+                                    }
+                                    bodyBuilder.addFormDataPart(keyName, file.getName(), RequestBody.create(MediaType.parse(mimeType), file));
+                                }
+                            }
+                        }
+                    }
+                    requestBody = bodyBuilder.build();
+                }
+                ProgressRequestBody progressRequestBody = new ProgressRequestBody(requestBody) {
+                    private int last = 0;
+
+                    @Override
+                    protected void onProgress(long current, long total, boolean done) {
+                        int progress = (int) (current * 100 / total);
+                        if (progress - last >= 5) {
+                            if (callback != null) {
+                                Map<String, Object> progressData = new HashMap<>();
+                                progressData.put("value", progress);
+                                PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(progressData);
+                                callback.jsCallAppProgress(js2AppInfo, app2JsInfo, parser);
+                            }
+                            last = progress;
+                        }
+                    }
+                };
+                requestBuilder.post(progressRequestBody);
+            }
+            Request request = requestBuilder.build();
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    e.printStackTrace();
+                    Map<String, Object> errorData = new HashMap<>();
+                    if (e.getCause().equals(SocketTimeoutException.class)) {//请求超时
+                        errorData.put("code", ERROR_TIMEOUT.getCode());
+                        errorData.put("message", ERROR_TIMEOUT.getMsg());
+                    } else if (e.getCause().equals(UnknownHostException.class)) {//一般没有网络报这个错
+                        errorData.put("code", ERROR_NO_NETWORK.getCode());
+                        errorData.put("message", ERROR_NO_NETWORK.getMsg());
+                    } else {
+                        errorData.put("code", "-1");
+                        errorData.put("message", e.getMessage());
+                    }
+                    PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(errorData);
+                    callback.jsCallAppFail(js2AppInfo, app2JsInfo, parser);
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    Map<String, Object> successData = new HashMap<>();
+                    successData.put("responseStatus", response.code());
+                    Map<String, String> headers = new HashMap<>();
+                    Set<String> names = response.headers().names();
+                    if (names != null) {
+                        for (String name : names) {
+                            headers.put(name, response.header(name));
+                        }
+                    }
+                    successData.put("responseHeaders", headers);
+                    successData.put("responseBody", response.body() != null ? response.body().string() : response.message());
+                    PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(successData);
+                    callback.jsCallAppSuccess(js2AppInfo, app2JsInfo, parser);
+                }
+            });
+        }
+    }
+
+    /**
      * 调用相机拍照
      */
     public boolean startCapturePic() {
         if (contextRef.get() != null) {
-            File cacheDir = contextRef.get().getExternalCacheDir();
-            if (cacheDir == null) {
-                cacheDir = contextRef.get().getCacheDir();
-            }
-            cameraFilePath = cacheDir.getAbsolutePath() + File.separator + "image_" + System.currentTimeMillis();
+            File cacheDir = DeviceUtils.getCacheDir(contextRef.get());
+            cameraFilePath = cacheDir.getAbsolutePath() + File.separator + "image_" + System.currentTimeMillis() + ".jpg";
             CaptureConfig captureConfig = new CaptureConfig(false, false, 0);
             JSONObject dataObj = captureInfo.getDataObj();
             int thumbWidth = dataObj.optInt("thumbWidth", Integer.MAX_VALUE);
@@ -603,9 +712,11 @@ public class PYCreditJsCallAppProcessor implements PYCreditJsCallAppProcess {
                         bitmap.recycle();
                         String base64Encode2String = EncodeUtils.base64Encode2String(bytes);
                         if (captureCallback != null) {
+                            File imageFile = new File(cameraFilePath);
                             Map<String, Object> successData = new HashMap<>();
                             successData.put("base64", base64Encode2String);
                             successData.put("localId", cameraFilePath);
+                            successData.put("filename", imageFile.getName());
                             PYCreditApp2JsInfo app2JsInfo = new PYCreditApp2JsInfo(successData);
                             captureCallback.jsCallAppSuccess(captureInfo, app2JsInfo, captureParser);
                         }

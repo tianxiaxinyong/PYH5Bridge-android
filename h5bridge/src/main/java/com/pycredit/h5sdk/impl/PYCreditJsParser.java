@@ -1,6 +1,8 @@
 package com.pycredit.h5sdk.impl;
 
 
+import android.text.TextUtils;
+
 import com.pycredit.h5sdk.js.JsParser;
 import com.pycredit.h5sdk.utils.JsonUtils;
 
@@ -37,6 +39,30 @@ public class PYCreditJsParser implements JsParser<PYCreditJs2AppInfo, PYCreditAp
     @Override
     public String encode(boolean success, PYCreditJs2AppInfo js2AppInfo, PYCreditApp2JsInfo app2JsInfo) {
         String callbackName = success ? js2AppInfo.getSuccessName() : js2AppInfo.getErrorName();
+        return encode(callbackName, js2AppInfo, app2JsInfo);
+    }
+
+    /**
+     * 将App2JsInfo封装成String
+     *
+     * @param type
+     * @param js2AppInfo
+     * @param app2JsInfo
+     * @return
+     */
+    @Override
+    public String encode(int type, PYCreditJs2AppInfo js2AppInfo, PYCreditApp2JsInfo app2JsInfo) {
+        String callbackName = null;
+        if (type == TYPE_PROGRESS) {
+            callbackName = js2AppInfo.getProgressName();
+        }
+        if (!TextUtils.isEmpty(callbackName)) {
+            return encode(callbackName, js2AppInfo, app2JsInfo);
+        }
+        return null;
+    }
+
+    public String encode(String callbackName, PYCreditJs2AppInfo js2AppInfo, PYCreditApp2JsInfo app2JsInfo) {
         String resultData = "";
         if (app2JsInfo.getData() != null) {
             if (app2JsInfo.getData() instanceof Map) {

@@ -106,16 +106,20 @@ public class CaptureActivity extends Activity {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         PackageManager packageManager = getPackageManager();
         if (intent.resolveActivity(packageManager) != null) {
-            File file = new File(filePath);
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {//如果api大于Android api23
-                Uri imageUri = FileProvider.getUriForFile(this, getPackageName() + ".h5sdk.fileprovider", file);//替换获取uri的获取方式
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);//加入flag
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-            } else {
-                intent.addCategory(Intent.CATEGORY_DEFAULT);
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(file));
+            try {
+                File file = new File(filePath);
+                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {//如果api大于Android api23
+                    Uri imageUri = FileProvider.getUriForFile(this, getPackageName() + ".h5sdk.fileprovider", file);//替换获取uri的获取方式
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);//加入flag
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+                } else {
+                    intent.addCategory(Intent.CATEGORY_DEFAULT);
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(file));
+                }
+                return intent;
+            } catch (Exception e) {
+                return null;
             }
-            return intent;
         }
         return null;
     }
