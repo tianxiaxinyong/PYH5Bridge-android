@@ -16,7 +16,7 @@ allprojects {
 
 
 dependencies {
-    compile 'com.pycredit.h5sdk:h5bridge:x.x.x' //x.x.x为SDK版本号,如:1.1.4
+    compile 'com.pycredit.h5sdk:h5bridge:x.x.x' //x.x.x为SDK版本号,如:1.2.0
 }
 ```
 
